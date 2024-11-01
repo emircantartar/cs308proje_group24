@@ -6,7 +6,7 @@ public class User {
     private String name;
     private String email;
     private String password;
-    private String role;
+    protected String role;
 
     protected void setRole(String rol){
         rol = role;
