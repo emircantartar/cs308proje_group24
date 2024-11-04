@@ -3,11 +3,13 @@ import java.util.List;
 import java.util.ArrayList;
 public class WishList {
     private long wishlist_id;
+    private Client myclient;
     public int sizeofwishlist;
     private List<Product> products;
     private double costOfList;
 
-    public WishList(long wishlist_id) {
+    public WishList(long wishlist_id, Client cl) {
+        this.myclient = cl;
         this.wishlist_id = wishlist_id;
         this.products = new ArrayList<>(); // Initialize products list
         this.sizeofwishlist = 0; // Initialize size of the+ list

@@ -4,38 +4,48 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-
-@Entity
+import java.util.List;
+//@Entity
 public class CartItem {
-    @Id
+    //@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private Long productId;
+    private Client client;
+    private Long cart_id;
+    private List<Product> productList;
     private int quantity;
+    private double tot_price;
 
     // Constructors
     public CartItem() {}
 
-    public CartItem(Long productId, int quantity) {
-        this.productId = productId;
-        this.quantity = quantity;
+    public CartItem(List<Product> products, Client cli) {
+        client = cli;
+        this.productList = products;
+        this.quantity = products.size();
+        tot_price = getTot_price();
     }
-
+    public double getTot_price(){
+        double price = 0;
+        for (Product pr: productList){
+            price += pr.getPrice();
+        }
+        return price;
+    }
     // Getters and Setters
     public Long getId() {
-        return id;
+        return cart_id;
     }
 
     public void setId(Long id) {
-        this.id = id;
+        this.cart_id = id;
     }
 
-    public Long getProductId() {
-        return productId;
+    public List<Product> getProductList() {
+        return productList;
     }
 
-    public void setProductId(Long productId) {
-        this.productId = productId;
+    public void setProductList(List<Product> productId) {
+        this.productList = productId;
     }
 
     public int getQuantity() {
@@ -44,5 +54,13 @@ public class CartItem {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+
+    public Client getClient() {
+        return client;
+    }
+
+    public void setClient(Client client) {
+        this.client = client;
     }
 }
