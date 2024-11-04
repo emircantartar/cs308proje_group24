@@ -1,15 +1,45 @@
 package com.sabanciuniv.demo.model;
 
-import java.util.List;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
+@Entity
 public class Product {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String name;
     private double price;
-    private long product_id;
-    private String pr_name;
-    private List<String> description;
-    private String category;
-    private String model;
-    public int stock_info; //how much left in the inventory??
+    private String description;
+    private int stock;
+    // Constructors
+    public Product() {}
+
+    public Product(String name, double price, String description, int stock) {
+        this.name = name;
+        this.price = price;
+        this.description = description;
+        this.stock = stock;
+    }
+
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
     public double getPrice() {
         return price;
@@ -19,43 +49,19 @@ public class Product {
         this.price = price;
     }
 
-    public long getProduct_id() {
-        return product_id;
-    }
-
-    public void setProduct_id(long product_id) {
-        this.product_id = product_id;
-    }
-
-    public String getPr_name() {
-        return pr_name;
-    }
-
-    public void setPr_name(String pr_name) {
-        this.pr_name = pr_name;
-    }
-
-    public List<String> getDescription() {
+    public String getDescription() {
         return description;
     }
 
-    public void setDescription(List<String> description) {
+    public void setDescription(String description) {
         this.description = description;
     }
 
-    public String getCategory() {
-        return category;
+    public int getStock() {
+        return stock;
     }
 
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public String getModel() {
-        return model;
-    }
-
-    public void setModel(String model) {
-        this.model = model;
+    public void setStock(int stock) {
+        this.stock = stock;
     }
 }
