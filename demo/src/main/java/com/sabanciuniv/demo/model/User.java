@@ -1,51 +1,94 @@
 package com.sabanciuniv.demo.model;
 
-public class User {
-    private long user_id;
-    private long tax_id;
-    private String name;
-    private String email;
-    private String password;
-    protected String role;
+import javax.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
 
-    protected void setRole(String rol){
-        rol = role;
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private long userId;
+
+    @Column(unique = true, nullable = false)
+    private long taxId;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
+    private Set<String> roles = new HashSet<>();
+
+    // Constructors
+    public User() {}
+
+    public User(String name, String email, String password, long taxId) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.taxId = taxId;
     }
-    protected String getRole(){
-        return role;
+
+    // Getters and Setters
+    public long getUserId() {
+        return userId;
     }
-    protected void setPassword(String psw){
-        password = psw;
+
+    public void setUserId(long userId) {
+        this.userId = userId;
     }
-    protected String getPassword(){
-        return password;
+
+    public long getTaxId() {
+        return taxId;
     }
-    protected void setEmail(String mail){
-        email = mail;
+
+    public void setTaxId(long taxId) {
+        this.taxId = taxId;
     }
-    protected String getEmail(){
-        return email;
-    }
-    protected void setName(String nm){
-        name = nm;
-    }
-    protected String getName(){
+
+    public String getName() {
         return name;
     }
 
-    public long getTax_id() {
-        return tax_id;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public void setTax_id(long tax_id) {
-        this.tax_id = tax_id;
+    public String getEmail() {
+        return email;
     }
 
-    public long getUser_id() {
-        return user_id;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
-    public void setUser_id(long user_id) {
-        this.user_id = user_id;
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Set<String> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(Set<String> roles) {
+        this.roles = roles;
+    }
+
+    public void addRole(String role) {
+        this.roles.add(role);
     }
 }
