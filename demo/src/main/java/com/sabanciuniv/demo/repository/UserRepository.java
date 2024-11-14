@@ -1,6 +1,6 @@
 package com.sabanciuniv.demo.repository;
 
-import com.sabanciuniv.demo.model.User;
+import com.sabanciuniv.demo.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.Optional;
@@ -12,6 +12,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     boolean existsByEmail(String email);
     
-    boolean existsByUsername(String username); // Add this if you have a username field
+    boolean existsByName(String name); // Add this if you have a username field
 }
 

@@ -1,6 +1,6 @@
-package com.sabanciuniv.demo.model;
+package com.sabanciuniv.demo.entity;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -23,6 +23,9 @@ public class User {
 
     @Column(nullable = false)
     private String password;
+
+    @Column(nullable = false)
+    private String role;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
@@ -80,11 +83,20 @@ public class User {
         this.password = password;
     }
 
+    public String getRole() {
+        return role;
+    }
+
+    // Set role method
+    public void setRole(String role) {
+        this.role = role;
+    }
+
     public Set<String> getRoles() {
         return roles;
     }
 
-    public void setRole(Set<String> roles) {
+    public void setRoles(Set<String> roles) {
         this.roles = roles;
     }
 

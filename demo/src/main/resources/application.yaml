@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: demo
+
+jwt:
+  secret: your_jwt_secret_key
+  expirationMs: 86400000  # 24 hours in milliseconds
+
+server:
+  port: 8081
