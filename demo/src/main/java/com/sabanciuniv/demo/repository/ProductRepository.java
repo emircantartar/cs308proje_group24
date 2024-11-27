@@ -8,6 +8,19 @@ import java.util.List;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
-    List<Product> findByCategory(String category);  // Custom query method
-    List<Product> findByPriceBetween(double minPrice, double maxPrice);  // Price filtering
+
+    // Find products by category
+    List<Product> findByCategory(String category);
+
+    // Find products within a price range
+    List<Product> findByPriceBetween(double minPrice, double maxPrice);
+
+    // Find products with stock below a certain threshold
+    List<Product> findByStockLessThan(int stock);
+
+    // Find products that are out of stock
+    List<Product> findByStockEquals(int stock);
+
+    // Find products with stock greater than a certain threshold
+    List<Product> findByStockGreaterThan(int stock);
 }

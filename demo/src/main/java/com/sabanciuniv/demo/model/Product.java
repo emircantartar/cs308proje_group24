@@ -8,17 +8,31 @@ import jakarta.persistence.Id;
 import java.util.List;
 import java.util.ArrayList;
 
-//@Entity
-public class Product{
+@Entity
+@Table(name = "products")
+public class Product {
+
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long product_id;
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Review> reviews;
+
+    @OneToOne
     private SalesManager seller;
-    private double rating;
+
     private String name;
     private double price;
+
+    @ElementCollection
     private List<String> description;
+
     private int stock;
     private String category;
+    private double averageRating = 0.0; // Average product rating
+    private int ratingCount = 0; // Total number of ratings
+
     // Constructors
     public Product() {}
 
@@ -28,7 +42,7 @@ public class Product{
         this.price = price;
         this.description = description;
         this.stock = stock;
-        this.rating = 0.0;
+        this.averageRating = 0.0;
         this.seller = manager;
     }
 
@@ -76,11 +90,40 @@ public class Product{
     public SalesManager getSeller() {
         return seller;
     }
+
     public void setSeller(SalesManager seller) {
         this.seller = seller;
     }
-    public double getRating(){return rating;}
-    public String getCategory(){return category;}
-    public void setCategory(String category){this.category = category;}
 
+    public double getAverageRating() {
+        return averageRating;
+    }
+
+    public void setAverageRating(double averageRating) {
+        this.averageRating = averageRating;
+    }
+
+    public int getRatingCount() {
+        return ratingCount;
+    }
+
+    public void setRatingCount(int ratingCount) {
+        this.ratingCount = ratingCount;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public List<Review> getReviews() {
+        return reviews;
+    }
+
+    public void setReviews(List<Review> reviews) {
+        this.reviews = reviews;
+    }
 }
