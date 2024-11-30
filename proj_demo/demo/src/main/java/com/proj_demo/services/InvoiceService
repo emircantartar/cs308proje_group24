@@ -1,0 +1,69 @@
+package com.proj_demo.services;
+
+import com.proj_demo.models.Invoice;
+import com.proj_demo.models.Order;
+import com.proj_demo.repositories.InvoiceRepository;
+import com.proj_demo.repositories.OrderRepository;
+import com.proj_demo.utils.PDFGenerator;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.proj_demo.utils.PDFGenerator;
+
+
+import java.io.IOException;
+
+@Service
+public class InvoiceService {
+
+    @Autowired
+    private InvoiceRepository invoiceRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    // Retrieve an invoice by order ID
+    public Invoice getInvoiceByOrderId(int orderId) {
+        return invoiceRepository.findByOrderId(orderId).orElse(null);
+    }
+
+    // Generate an invoice for a specific order
+    public boolean generateInvoice(int orderId) {
+        // Check if the order exists
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            return false; // Order not found
+        }
+
+        // Check if an invoice already exists
+        if (invoiceRepository.findByOrderId(orderId).isPresent()) {
+            return false; // Invoice already exists
+        }
+
+        // Generate the PDF file path
+        String pdfFilePath;
+        try {
+            pdfFilePath = PDFGenerator.generateInvoicePDF(order);
+        } catch (IOException | com.itextpdf.text.DocumentException e) {
+            e.printStackTrace();
+            return false; // PDF generation failed
+        }
+
+        // Create and save the invoice
+        Invoice invoice = new Invoice(order, pdfFilePath);
+        invoiceRepository.save(invoice);
+
+        return true;
+    }
+
+    public String generateInvoice(Order order) {
+        try {
+            return PDFGenerator.generateInvoicePDF(order);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    
+}

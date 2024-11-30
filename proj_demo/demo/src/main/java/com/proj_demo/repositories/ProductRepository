@@ -1,0 +1,21 @@
+package com.proj_demo.repositories;
+
+import com.proj_demo.models.Product;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface ProductRepository extends JpaRepository<Product, Integer> {
+    // Search products by name or description
+    List<Product> findByNameContainingOrDescriptionContaining(String name, String description);
+
+    // Sort products by price
+    List<Product> findAllByOrderByPriceAsc();
+    List<Product> findAllByOrderByPriceDesc();
+
+    // Sort products by popularity (average rating)
+    List<Product> findAllByOrderByAverageRatingAsc();
+    List<Product> findAllByOrderByAverageRatingDesc();
+}

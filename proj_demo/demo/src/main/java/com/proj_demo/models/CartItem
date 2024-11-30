@@ -1,0 +1,141 @@
+package com.proj_demo.models;
+
+import javax.persistence.*;
+import java.util.Objects;
+
+@Entity
+@Table(name = "cart_items")
+public class CartItem {
+    // Primary key for the cart item
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    // Many-to-one relationship with shopping cart
+    @ManyToOne
+    @JoinColumn(name = "shopping_cart_id", nullable = false)
+    private ShoppingCart shoppingCart;
+
+    // Many-to-one relationship with product
+    @ManyToOne
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
+
+    // Quantity of the product in the cart
+    @Column(nullable = false)
+    private int quantity;
+
+    // Default constructor (required for JPA)
+    public CartItem() {
+    }
+
+    // Parameterized constructor
+    public CartItem(Product product, int quantity) {
+        this.product = product;
+        this.quantity = quantity;
+    }
+
+    // Getters and Setters
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public ShoppingCart getShoppingCart() {
+        return shoppingCart;
+    }
+
+    public void setShoppingCart(ShoppingCart shoppingCart) {
+        this.shoppingCart = shoppingCart;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        if (quantity > 0) {
+            this.quantity = quantity;
+        } else {
+            throw new IllegalArgumentException("Quantity must be greater than zero.");
+        }
+    }
+
+    // Business Logic Methods
+
+    /**
+     * Increases the quantity of the cart item by a specified amount.
+     *
+     * @param amount The amount to increase.
+     */
+    public void increaseQuantity(int amount) {
+        if (amount > 0) {
+            this.quantity += amount;
+        } else {
+            throw new IllegalArgumentException("Amount to increase must be greater than zero.");
+        }
+    }
+
+    /**
+     * Decreases the quantity of the cart item by a specified amount.
+     *
+     * @param amount The amount to decrease.
+     * @return true if quantity is reduced successfully, false if the reduction is not possible.
+     */
+    public boolean decreaseQuantity(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Amount to decrease must be greater than zero.");
+        }
+        if (this.quantity >= amount) {
+            this.quantity -= amount;
+            return true;
+        }
+        return false; // Not enough quantity to decrease
+    }
+
+    /**
+     * Calculates the total price for the cart item.
+     *
+     * @return The total price (quantity * product price).
+     */
+    public double calculateTotalPrice() {
+        return this.quantity * this.product.getPrice();
+    }
+
+    // Overridden Methods
+
+    @Override
+    public String toString() {
+        return "CartItem{" +
+                "id=" + id +
+                ", product=" + product.getName() +
+                ", quantity=" + quantity +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        CartItem cartItem = (CartItem) o;
+        return id == cartItem.id &&
+               Objects.equals(product, cartItem.product) &&
+               Objects.equals(shoppingCart, cartItem.shoppingCart);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, product, shoppingCart);
+    }
+}

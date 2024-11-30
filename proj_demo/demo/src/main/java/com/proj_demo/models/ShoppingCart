@@ -1,0 +1,134 @@
+package com.proj_demo.models;
+
+import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+@Entity
+@Table(name = "shopping_carts")
+public class ShoppingCart {
+    // Primary key for the shopping cart
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    // One-to-one relationship with the user
+    @OneToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    // One-to-many relationship with cart items
+    @OneToMany(mappedBy = "shoppingCart", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CartItem> items = new ArrayList<>();
+
+    // Default constructor (required for JPA)
+    public ShoppingCart() {
+    }
+
+    // Parameterized constructor
+    public ShoppingCart(User user) {
+        this.user = user;
+    }
+
+    // Getters and Setters
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public List<CartItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<CartItem> items) {
+        this.items = items;
+    }
+
+    // Business Logic Methods
+
+    /**
+     * Adds an item to the shopping cart.
+     *
+     * @param cartItem The item to add.
+     */
+    public void addItem(CartItem cartItem) {
+        for (CartItem item : items) {
+            if (item.getProduct().equals(cartItem.getProduct())) {
+                // Update quantity if the product is already in the cart
+                item.setQuantity(item.getQuantity() + cartItem.getQuantity());
+                return;
+            }
+        }
+        this.items.add(cartItem);
+        cartItem.setShoppingCart(this);
+    }
+
+    /**
+     * Removes an item from the shopping cart.
+     *
+     * @param cartItem The item to remove.
+     */
+    public void removeItem(CartItem cartItem) {
+        this.items.remove(cartItem);
+        cartItem.setShoppingCart(null);
+    }
+
+    /**
+     * Calculates the total price of items in the cart.
+     *
+     * @return The total price of all items.
+     */
+    public double calculateTotal() {
+        double total = 0.0;
+        for (CartItem item : items) {
+            total += item.getQuantity() * item.getProduct().getPrice();
+        }
+        return total;
+    }
+
+    /**
+     * Clears all items from the shopping cart.
+     */
+    public void clearCart() {
+        for (CartItem item : items) {
+            item.setShoppingCart(null);
+        }
+        items.clear();
+    }
+
+    // Overridden Methods
+
+    @Override
+    public String toString() {
+        return "ShoppingCart{" +
+                "id=" + id +
+                ", user=" + user.getName() +
+                ", items=" + items +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ShoppingCart that = (ShoppingCart) o;
+        return id == that.id && Objects.equals(user, that.user);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, user);
+    }
+}

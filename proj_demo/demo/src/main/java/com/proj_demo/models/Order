@@ -1,0 +1,165 @@
+package com.proj_demo.models;
+
+import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+@Entity
+@Table(name = "orders")
+public class Order {
+    // Primary key for the order
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    // Many-to-one relationship with user
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    // One-to-many relationship with order items
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> items = new ArrayList<>();
+
+    // Order status
+    @Column(nullable = false)
+    private String status; // e.g., "processing", "in-transit", "delivered"
+
+    // Total price of the order
+    @Column(nullable = false)
+    private double totalPrice;
+
+    // Delivery address for the order
+    @Column(nullable = false, length = 500)
+    private String deliveryAddress;
+
+    // Default constructor (required for JPA)
+    public Order() {
+    }
+
+    // Parameterized constructor
+    public Order(User user, String deliveryAddress) {
+        this.user = user;
+        this.deliveryAddress = deliveryAddress;
+        this.status = "processing"; // Default status for a new order
+        this.totalPrice = 0.0; // Initial total price
+    }
+
+    // Getters and Setters
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public List<OrderItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<OrderItem> items) {
+        this.items = items;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public double getTotalPrice() {
+        return totalPrice;
+    }
+
+    public void setTotalPrice(double totalPrice) {
+        this.totalPrice = totalPrice;
+    }
+
+    public String getDeliveryAddress() {
+        return deliveryAddress;
+    }
+
+    public void setDeliveryAddress(String deliveryAddress) {
+        this.deliveryAddress = deliveryAddress;
+    }
+
+    // Business Logic Methods
+
+    /**
+     * Adds an item to the order and updates the total price.
+     *
+     * @param orderItem The item to add.
+     */
+    public void addItem(OrderItem orderItem) {
+        this.items.add(orderItem);
+        orderItem.setOrder(this);
+        updateTotalPrice();
+    }
+
+    /**
+     * Removes an item from the order and updates the total price.
+     *
+     * @param orderItem The item to remove.
+     */
+    public void removeItem(OrderItem orderItem) {
+        this.items.remove(orderItem);
+        orderItem.setOrder(null);
+        updateTotalPrice();
+    }
+
+    /**
+     * Updates the total price of the order based on the order items.
+     */
+    public void updateTotalPrice() {
+        this.totalPrice = items.stream()
+                .mapToDouble(item -> item.getQuantity() * item.getPriceAtPurchase())
+                .sum();
+    }
+
+    /**
+     * Checks if the order is complete (e.g., all items delivered).
+     *
+     * @return true if all items are delivered, false otherwise.
+     */
+    public boolean isComplete() {
+        return "delivered".equalsIgnoreCase(this.status);
+    }
+
+    // Overridden Methods
+
+    @Override
+    public String toString() {
+        return "Order{" +
+                "id=" + id +
+                ", user=" + user.getName() +
+                ", status='" + status + '\'' +
+                ", totalPrice=" + totalPrice +
+                ", deliveryAddress='" + deliveryAddress + '\'' +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Order order = (Order) o;
+        return id == order.id && Objects.equals(user, order.user);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, user);
+    }
+}

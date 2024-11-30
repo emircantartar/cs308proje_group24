@@ -1,0 +1,69 @@
+package com.proj_demo.services;
+
+import com.proj_demo.models.Product;
+import com.proj_demo.repositories.ProductRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.proj_demo.utils.SearchUtil;
+
+
+import java.util.List;
+
+@Service
+public class ProductService {
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    // Fetch all products
+    public List<Product> getAllProducts() {
+        return productRepository.findAll();
+    }
+
+    // Fetch a product by ID
+    public Product getProductById(int id) {
+        return productRepository.findById(id).orElse(null);
+    }
+
+    // Search products by name or description
+    public List<Product> searchProducts(String query) {
+        return productRepository.findByNameContainingOrDescriptionContaining(query, query);
+    }
+
+    // Sort products by price or popularity
+    public List<Product> sortProducts(String sortBy, String order) {
+        if ("price".equalsIgnoreCase(sortBy)) {
+            return "asc".equalsIgnoreCase(order) 
+                    ? productRepository.findAllByOrderByPriceAsc() 
+                    : productRepository.findAllByOrderByPriceDesc();
+        } else if ("popularity".equalsIgnoreCase(sortBy)) {
+            return "asc".equalsIgnoreCase(order) 
+                    ? productRepository.findAllByOrderByAverageRatingAsc() 
+                    : productRepository.findAllByOrderByAverageRatingDesc();
+        }
+        throw new IllegalArgumentException("Invalid sort criteria: " + sortBy);
+    }
+
+    // Add a rating to a product
+    public boolean addRating(int productId, int rating) {
+        if (rating < 1 || rating > 5) {
+            return false; // Rating must be between 1 and 5
+        }
+        Product product = productRepository.findById(productId).orElse(null);
+        if (product != null) {
+            product.addRating(rating);
+            productRepository.save(product);
+            return true;
+        }
+        return false; // Product not found
+    }
+
+
+    public List<Product> searchAndSortProducts(List<Product> products, String query, String sortBy, String order) {
+        
+        List<Product> filteredProducts = SearchUtil.searchProducts(products, query);
+        
+        return SearchUtil.sortProducts(filteredProducts, sortBy, order);
+    }
+}

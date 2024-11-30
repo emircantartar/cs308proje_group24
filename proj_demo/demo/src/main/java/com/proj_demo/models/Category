@@ -1,0 +1,102 @@
+package com.proj_demo.models;
+
+import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+@Entity
+@Table(name = "categories")
+public class Category {
+    // Primary key for the category
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+
+    // Name of the category
+    @Column(nullable = false, unique = true)
+    private String name;
+
+    // Relationship with Product (one-to-many)
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Product> products = new ArrayList<>();
+
+    // Default constructor (required for JPA)
+    public Category() {
+    }
+
+    // Parameterized constructor
+    public Category(String name) {
+        this.name = name;
+    }
+
+    // Getters and Setters
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<Product> getProducts() {
+        return products;
+    }
+
+    public void setProducts(List<Product> products) {
+        this.products = products;
+    }
+
+    // Business Logic Methods
+
+    /**
+     * Adds a product to the category.
+     *
+     * @param product The product to add.
+     */
+    public void addProduct(Product product) {
+        this.products.add(product);
+        product.setCategory(this);
+    }
+
+    /**
+     * Removes a product from the category.
+     *
+     * @param product The product to remove.
+     */
+    public void removeProduct(Product product) {
+        this.products.remove(product);
+        product.setCategory(null);
+    }
+
+    // Overridden Methods
+
+    @Override
+    public String toString() {
+        return "Category{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Category category = (Category) o;
+        return id == category.id && Objects.equals(name, category.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, name);
+    }
+}

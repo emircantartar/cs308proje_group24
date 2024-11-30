@@ -1,0 +1,87 @@
+package com.proj_demo.services;
+
+import com.proj_demo.models.*;
+import com.proj_demo.repositories.OrderItemRepository;
+import com.proj_demo.repositories.OrderRepository;
+import com.proj_demo.repositories.ShoppingCartRepository;
+import com.proj_demo.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class OrderService {
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
+
+    @Autowired
+    private ShoppingCartRepository shoppingCartRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    // Fetch all orders for a user
+    public List<Order> getOrdersByUserId(int userId) {
+        return orderRepository.findByUserId(userId);
+    }
+
+    // Fetch order by ID
+    public Order getOrderById(int orderId) {
+        return orderRepository.findById(orderId).orElse(null);
+    }
+
+    // Place a new order
+    public boolean placeOrder(int userId) {
+        // Find the user's shopping cart
+        ShoppingCart cart = shoppingCartRepository.findByUserId(userId).orElse(null);
+        if (cart == null || cart.getItems().isEmpty()) {
+            return false; // No cart or empty cart
+        }
+
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return false; // User not found
+        }
+
+        // Create a new order
+        Order order = new Order(user, user.getAddress());
+        double totalPrice = 0.0;
+
+        // Transfer items from the cart to the order
+        for (CartItem cartItem : cart.getItems()) {
+            OrderItem orderItem = new OrderItem(
+                    cartItem.getProduct(),
+                    cartItem.getQuantity(),
+                    cartItem.getProduct().getPrice()
+            );
+            totalPrice += orderItem.calculateTotalPrice();
+            order.addItem(orderItem);
+        }
+
+        // Set total price and save the order
+        order.setTotalPrice(totalPrice);
+        orderRepository.save(order);
+
+        // Clear the user's cart
+        cart.clearCart();
+        shoppingCartRepository.save(cart);
+
+        return true;
+    }
+
+    // Update the status of an order
+    public boolean updateOrderStatus(int orderId, String status) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order != null) {
+            order.setStatus(status);
+            orderRepository.save(order);
+            return true;
+        }
+        return false;
+    }
+}

@@ -1,0 +1,59 @@
+package com.proj_demo.services;
+
+import com.proj_demo.models.Comment;
+import com.proj_demo.models.Product;
+import com.proj_demo.models.User;
+import com.proj_demo.repositories.CommentRepository;
+import com.proj_demo.repositories.ProductRepository;
+import com.proj_demo.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class CommentService {
+
+    @Autowired
+    private CommentRepository commentRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    // Add a comment to a product
+    public boolean addComment(int userId, int productId, int rating, String content) {
+        if (rating < 1 || rating > 5 || content == null || content.isEmpty()) {
+            return false; // Invalid rating or content
+        }
+
+        User user = userRepository.findById(userId).orElse(null);
+        Product product = productRepository.findById(productId).orElse(null);
+        if (user == null || product == null) {
+            return false; // User or product not found
+        }
+
+        Comment comment = new Comment(user, product, content, rating);
+        commentRepository.save(comment);
+        return true;
+    }
+
+    // Approve a comment
+    public boolean approveComment(int commentId) {
+        Comment comment = commentRepository.findById(commentId).orElse(null);
+        if (comment == null) {
+            return false; // Comment not found
+        }
+
+        comment.setApproved(true);
+        commentRepository.save(comment);
+        return true;
+    }
+
+    // Get all approved comments for a product
+    public List<Comment> getApprovedCommentsForProduct(int productId) {
+        return commentRepository.findByProductIdAndApprovedTrue(productId);
+    }
+}
