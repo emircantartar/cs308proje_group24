@@ -21,10 +21,10 @@ connectCloudinary();
 app.use(express.json());
 app.use(
   cors({
-    origin: ['http://localhost:5173'], // Frontend URL
+    origin: ['http://localhost:5173', 'http://localhost:5174'], // Frontend and Admin URLs
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'token'], // Include 'token' for CORS
+    allowedHeaders: ['Content-Type', 'Authorization', 'token'],
   })
 );
 
