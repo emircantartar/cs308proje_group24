@@ -37,7 +37,6 @@ const ShopContextProvider = (props) => {
     }, [navigate]);
 
     const addToCart = async (itemId, size) => {
-
         if (!size) {
             toast.error('Select Product Size');
             return;
@@ -61,15 +60,22 @@ const ShopContextProvider = (props) => {
 
         if (token) {
             try {
-
-                await axios.post(backendUrl + '/api/cart/add', { itemId, size }, { headers: { token } })
-
+                await axios.post(
+                    `${backendUrl}/api/cart/add`, 
+                    { itemId, size },
+                    { 
+                        headers: { 
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        } 
+                    }
+                );
             } catch (error) {
-                console.log(error)
-                toast.error(error.message)
+                if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+                    toast.error(error.response?.data?.message || 'Error adding to cart');
+                }
             }
         }
-
     }
 
     const getCartCount = () => {
@@ -89,24 +95,28 @@ const ShopContextProvider = (props) => {
     }
 
     const updateQuantity = async (itemId, size, quantity) => {
-
         let cartData = structuredClone(cartItems);
-
         cartData[itemId][size] = quantity;
-
-        setCartItems(cartData)
+        setCartItems(cartData);
 
         if (token) {
             try {
-
-                await axios.post(backendUrl + '/api/cart/update', { itemId, size, quantity }, { headers: { token } })
-
+                await axios.post(
+                    `${backendUrl}/api/cart/update`,
+                    { itemId, size, quantity },
+                    { 
+                        headers: { 
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        } 
+                    }
+                );
             } catch (error) {
-                console.log(error)
-                toast.error(error.message)
+                if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+                    toast.error(error.response?.data?.message || 'Error updating cart');
+                }
             }
         }
-
     }
 
     const getCartAmount = () => {

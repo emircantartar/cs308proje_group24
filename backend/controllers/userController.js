@@ -5,13 +5,15 @@ import userModel from "../models/userModel.js";
 
 
 const createToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET)
+    return jwt.sign({ 
+        id,
+        role: 'user'  // Regular users get 'user' role
+    }, process.env.JWT_SECRET)
 }
 
 // Route for user login
 const loginUser = async (req, res) => {
     try {
-
         const { email, password } = req.body;
 
         const user = await userModel.findOne({ email });
@@ -23,18 +25,20 @@ const loginUser = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (isMatch) {
-
             const token = createToken(user._id)
-            res.json({ success: true, token })
-
+            res.json({ 
+                success: true, 
+                token,
+                role: 'user'
+            })
         }
         else {
             res.json({ success: false, message: 'Invalid credentials' })
         }
 
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message })
+        console.error('Login error:', error);
+        res.status(500).json({ success: false, message: error.message })
     }
 }
 
