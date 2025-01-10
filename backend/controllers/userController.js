@@ -87,21 +87,33 @@ const adminLogin = async (req, res) => {
 
         // Sales Manager credentials
         if (email === process.env.SALES_MANAGER_EMAIL && password === process.env.SALES_MANAGER_PASSWORD) {
-            const token = jwt.sign({ email, role: 'sales_manager' }, process.env.JWT_SECRET);
+            const token = jwt.sign({ 
+                id: 'sales_manager_id', 
+                email, 
+                role: 'sales_manager' 
+            }, process.env.JWT_SECRET);
             res.json({success: true, token, role: 'sales_manager'});
             return;
         }
 
         // Product Manager credentials
         if (email === process.env.PRODUCT_MANAGER_EMAIL && password === process.env.PRODUCT_MANAGER_PASSWORD) {
-            const token = jwt.sign({ email, role: 'product_manager' }, process.env.JWT_SECRET);
+            const token = jwt.sign({ 
+                id: 'product_manager_id', 
+                email, 
+                role: 'product_manager' 
+            }, process.env.JWT_SECRET);
             res.json({success: true, token, role: 'product_manager'});
             return;
         }
 
         // Regular admin credentials
         if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-            const token = jwt.sign({ email, role: 'admin' }, process.env.JWT_SECRET);
+            const token = jwt.sign({ 
+                id: 'admin_id', 
+                email, 
+                role: 'admin' 
+            }, process.env.JWT_SECRET);
             res.json({success: true, token, role: 'admin'});
             return;
         }
@@ -109,8 +121,11 @@ const adminLogin = async (req, res) => {
         res.json({success: false, message: "Invalid credentials"});
 
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message })
+        console.error('Admin login error:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Internal server error during login' 
+        });
     }
 }
 

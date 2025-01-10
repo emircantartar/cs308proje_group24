@@ -13,9 +13,14 @@ const Orders = ({ token }) => {
 
     try {
       const response = await axios.post(
-        backendUrl + '/api/order/list',
+        `${backendUrl}/api/order/list`,
         {},
-        { headers: { token } }
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
       if (response.data.success) {
         setOrders(response.data.orders.reverse());
@@ -23,7 +28,9 @@ const Orders = ({ token }) => {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+        toast.error(error.response?.data?.message || 'Error fetching orders');
+      }
     }
   };
 
@@ -31,16 +38,23 @@ const Orders = ({ token }) => {
   const statusHandler = async (event, orderId) => {
     try {
       const response = await axios.post(
-        backendUrl + '/api/order/status',
+        `${backendUrl}/api/order/status`,
         { orderId, status: event.target.value },
-        { headers: { token } }
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
       if (response.data.success) {
         await fetchAllOrders();
+        toast.success('Order status updated successfully');
       }
     } catch (error) {
-      console.log(error);
-      toast.error(error.message);
+      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+        toast.error(error.response?.data?.message || 'Error updating order status');
+      }
     }
   };
 
@@ -49,8 +63,8 @@ const Orders = ({ token }) => {
     try {
       const response = await axios.get(`${backendUrl}/api/order/invoice/${orderId}`, {
         headers: {
-          token,
-          Accept: 'application/pdf',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/pdf',
         },
         responseType: 'blob',
       });
@@ -67,8 +81,9 @@ const Orders = ({ token }) => {
 
       URL.revokeObjectURL(blobUrl);
     } catch (error) {
-      console.error('Error downloading invoice:', error);
-      toast.error('Error downloading invoice.');
+      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+        toast.error('Error downloading invoice.');
+      }
     }
   };
 
