@@ -86,24 +86,32 @@ const listProducts = async (req, res) => {
     const { search } = req.query; // Accept search query from the frontend
 
     // Build the query based on search
-    let query = {};
+    let query = {
+      name: { $not: /Category Placeholder$/ } // Exclude placeholder products
+    };
 
     if (search) {
       query = {
-        $or: [
-          { name: { $regex: search, $options: "i" } }, // Case-insensitive search by name
-          { description: { $regex: search, $options: "i" } }, // Case-insensitive search by description
-        ],
+        $and: [
+          { name: { $not: /Category Placeholder$/ } },
+          {
+            $or: [
+              { name: { $regex: search, $options: "i" } }, // Case-insensitive search by name
+              { description: { $regex: search, $options: "i" } }, // Case-insensitive search by description
+            ]
+          }
+        ]
       };
     }
-
-
     
     // Fetch products based on query
-    const products = await productModel.find({});
+    const products = await productModel.find(query);
 
-     // Use aggregation to count the number of products in each category
+    // Use aggregation to count the number of products in each category
     const categoryCounts = await productModel.aggregate([
+      {
+        $match: { name: { $not: /Category Placeholder$/ } }
+      },
       {
         $group: {
           _id: "$category", // Group by category
@@ -111,9 +119,6 @@ const listProducts = async (req, res) => {
         },
       },
     ]);
-
-
-   
 
     // Respond with products and category counts
     res.json({ success: true, products, categoryCounts });
@@ -338,22 +343,40 @@ export const getCategories = async (req, res) => {
     // Use aggregation to get unique categories and their product counts
     const categories = await productModel.aggregate([
       {
-        $group: {
-          _id: "$category",
-          count: { $sum: 1 },
-          subCategories: { $addToSet: "$subCategory" }
+        $facet: {
+          allCategories: [
+            {
+              $group: {
+                _id: "$category",
+                subCategories: { $addToSet: "$subCategory" }
+              }
+            }
+          ],
+          nonPlaceholderCounts: [
+            {
+              $match: { name: { $not: /Category Placeholder$/ } }
+            },
+            {
+              $group: {
+                _id: "$category",
+                count: { $sum: 1 }
+              }
+            }
+          ]
         }
-      },
-      {
-        $project: {
-          category: "$_id",
-          count: 1,
-          subCategories: 1,
-          _id: 0
-        }
-      },
-      { $sort: { category: 1 } }
-    ]);
+      }
+    ]).then(results => {
+      const [{ allCategories, nonPlaceholderCounts }] = results;
+      
+      // Combine the results
+      const combinedCategories = allCategories.map(cat => ({
+        category: cat._id,
+        subCategories: cat.subCategories,
+        count: nonPlaceholderCounts.find(c => c._id === cat._id)?.count || 0
+      }));
+
+      return combinedCategories.sort((a, b) => a.category.localeCompare(b.category));
+    });
 
     res.json({ 
       success: true, 
@@ -389,13 +412,28 @@ export const addCategory = async (req, res) => {
       return res.json({ success: false, message: "Category already exists" });
     }
 
+    // Create a placeholder product to store the category
+    const placeholderProduct = new productModel({
+      name: `${category} Category Placeholder`,
+      description: `Placeholder product for category: ${category}`,
+      price: 0,
+      category: category,
+      subCategory: subCategories?.[0] || '',
+      sizes: [],
+      image: [],
+      quantity: 0,
+      date: Date.now()
+    });
+
+    await placeholderProduct.save();
+
     res.json({ 
       success: true, 
       message: "Category added successfully",
       category: {
         category,
         subCategories: subCategories || [],
-        count: 0
+        count: 1
       }
     });
   } catch (error) {

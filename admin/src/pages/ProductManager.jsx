@@ -90,7 +90,7 @@ const ProductManager = ({ token }) => {
     try {
       const response = await axios.post(
         `${backendUrl}/api/product/category/add`,
-        { name: newCategory },
+        { category: newCategory },
         { headers: { token } }
       );
       if (response.data.success) {

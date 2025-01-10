@@ -15,29 +15,45 @@ const Collection = () => {
   const [subCategory,setSubCategory] = useState([]);
   const [sortType,setSortType] = useState('relavent')
   const {backendUrl}=useContext(ShopContext)
-  const [categoryCounts, setCategoryCounts] = useState([]); // State to store category counts
+  const [categories, setCategories] = useState([]); // State for all categories
+  const [allSubCategories, setAllSubCategories] = useState([]); // State for all subcategories
   
 
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get(`${backendUrl}/api/product/categories`);
+        if (response.data.success) {
+          setCategories(response.data.categories);
+          // Extract all unique subcategories
+          const subCats = response.data.categories.reduce((acc, cat) => {
+            return [...acc, ...cat.subCategories];
+          }, []);
+          setAllSubCategories([...new Set(subCats)]);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+    fetchCategories();
+  }, [backendUrl]);
+
   const toggleCategory = (e) => {
-
     if (category.includes(e.target.value)) {
-        setCategory(prev=> prev.filter(item => item !== e.target.value))
+      setCategory(prev => prev.filter(item => item !== e.target.value));
+    } else {
+      setCategory(prev => [...prev, e.target.value]);
     }
-    else{
-      setCategory(prev => [...prev,e.target.value])
-    }
-
-  }
+  };
   
 
 
   const toggleSubCategory = (e) => {
-
     if (subCategory.includes(e.target.value)) {
-      setSubCategory(prev=> prev.filter(item => item !== e.target.value))
-    }
-    else{
-      setSubCategory(prev => [...prev,e.target.value])
+      setSubCategory(prev => prev.filter(item => item !== e.target.value));
+    } else {
+      setSubCategory(prev => [...prev, e.target.value]);
     }
   }
 
@@ -127,21 +143,18 @@ const Collection = () => {
         <div className={`border border-gray-300 pl-5 py-3 mt-6 ${showFilter ? '' :'hidden'} sm:block`}>
           <p className="mb-3 text-sm font-medium">CATEGORIES</p>
           <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Men'} onChange={toggleCategory}
-              />{' '}
-              Men ({getCategoryCount("Men")})
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Women'} onChange={toggleCategory}
-              />{' '} 
-              Women ({getCategoryCount("Women")})
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Kids'} onChange={toggleCategory}
-              /> {' '}
-              Kids ({getCategoryCount("Kids")})
-            </p>
+            {categories.map((cat) => (
+              <p key={cat.category} className='flex gap-2'>
+                <input
+                  className='w-3'
+                  type="checkbox"
+                  value={cat.category}
+                  onChange={toggleCategory}
+                  checked={category.includes(cat.category)}
+                />
+                {cat.category} ({cat.count})
+              </p>
+            ))}
           </div>
         </div>
 
@@ -150,15 +163,18 @@ const Collection = () => {
         <div className={`border border-gray-300 pl-5 py-3 my-5 ${showFilter ? '' :'hidden'} sm:block`}>
           <p className='mb-3 text-sm font-medium'>TYPE</p>
           <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Topwear'} onChange={toggleSubCategory}/> Topwear
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Bottomwear'} onChange={toggleSubCategory}/> Bottomwear
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Winterwear'} onChange={toggleSubCategory}/> Winterwear
-            </p>
+            {allSubCategories.map((subCat) => (
+              <p key={subCat} className='flex gap-2'>
+                <input
+                  className='w-3'
+                  type="checkbox"
+                  value={subCat}
+                  onChange={toggleSubCategory}
+                  checked={subCategory.includes(subCat)}
+                />
+                {subCat}
+              </p>
+            ))}
           </div>
         </div>
       </div>
