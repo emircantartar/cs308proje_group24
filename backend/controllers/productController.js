@@ -134,7 +134,17 @@ const listProducts = async (req, res) => {
 // Function for removing a product
 const removeProduct = async (req, res) => {
   try {
-    await productModel.findByIdAndDelete(req.body.id);
+    const productId = req.body.id;
+    
+    // First, remove the product
+    await productModel.findByIdAndDelete(productId);
+
+    // Clean up cart references
+    await userModel.updateMany(
+      { [`cartData.${productId}`]: { $exists: true } },
+      { $unset: { [`cartData.${productId}`]: "" } }
+    );
+
     res.json({ success: true, message: "Product Removed" });
   } catch (error) {
     console.log(error);
@@ -486,8 +496,20 @@ export const deleteCategory = async (req, res) => {
   try {
     const { category } = req.body;
     
+    // First, get all products in this category
+    const productsToDelete = await productModel.find({ category });
+    const productIds = productsToDelete.map(product => product._id.toString());
+
     // Delete all products in the category
     await productModel.deleteMany({ category });
+
+    // Clean up cart references for all deleted products
+    for (const productId of productIds) {
+      await userModel.updateMany(
+        { [`cartData.${productId}`]: { $exists: true } },
+        { $unset: { [`cartData.${productId}`]: "" } }
+      );
+    }
 
     res.json({ 
       success: true, 

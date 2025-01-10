@@ -156,6 +156,7 @@ const ShopContextProvider = (props) => {
         if (!token) return;
         
         try {
+            console.log('Fetching cart with token:', token);
             const response = await axios.post(
                 `${backendUrl}/api/cart/get`,
                 {},
@@ -167,11 +168,21 @@ const ShopContextProvider = (props) => {
                 }
             );
             
+            console.log('Cart response:', response.data);
             if (response.data.success) {
-                setCartItems(response.data.cartData)
+                // Convert cartItems array to the expected format
+                const cartData = {};
+                response.data.cartItems.forEach(item => {
+                    if (!cartData[item._id]) {
+                        cartData[item._id] = {};
+                    }
+                    cartData[item._id][item.size] = item.cartQuantity;
+                });
+                console.log('Converted cart data:', cartData);
+                setCartItems(cartData);
             }
         } catch (error) {
-            console.log(error)
+            console.error('Cart fetch error:', error.response || error);
             if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
                 toast.error(error.response?.data?.message || 'Error fetching cart');
             }
