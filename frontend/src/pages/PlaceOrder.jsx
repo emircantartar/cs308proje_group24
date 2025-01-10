@@ -51,17 +51,31 @@ const PlaceOrder = () => {
                 paymentMethod: method,
             };
 
-            // API Call for Cash on Delivery
-            const response = await axios.post(backendUrl + '/api/order/place', orderData, { headers: { token } });
+            // API Call for placing order
+            const response = await axios.post(
+                `${backendUrl}/api/order/place`, 
+                orderData, 
+                { 
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    } 
+                }
+            );
+
             if (response.data.success) {
+                toast.success('Order placed successfully!');
                 setCartItems({});
                 navigate('/orders');
             } else {
-                toast.error(response.data.message);
+                toast.error(response.data.message || 'Failed to place order');
             }
         } catch (error) {
-            console.log(error);
-            toast.error(error.message);
+            console.error('Order placement error:', error);
+            // Don't show error for 401 as it's handled by interceptor
+            if (error.response?.status !== 401) {
+                toast.error(error.response?.data?.message || 'Error placing order. Please try again.');
+            }
         }
     };
 

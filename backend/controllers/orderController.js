@@ -341,51 +341,30 @@ export const downloadInvoice = async (req, res) => {
 // ====================== ORDER CREATION & MANAGEMENT ======================
 export const placeOrder = async (req, res) => {
   try {
-    const { userId, items, amount, address, paymentMethod, cardDetails } = req.body;
+    const { address, items, amount, paymentMethod } = req.body;
+    const userId = req.user._id;  // Get userId from auth middleware
 
-    if (!["cod", "card"].includes(paymentMethod)) {
-      return res.status(400).json({ success: false, message: 'Invalid payment method' });
-    }
-
-    const orderData = {
+    // Create new order
+    const newOrder = new orderModel({
       userId,
       items,
-      address,
       amount,
+      address,
       paymentMethod,
-      cardDetails: paymentMethod === 'card' ? cardDetails : undefined,
-      payment: paymentMethod === 'card',
       date: Date.now(),
-    };
+      payment: paymentMethod === 'cod' ? false : true
+    });
 
-    const newOrder = new orderModel(orderData);
     await newOrder.save();
 
-    // Update product quantities
-    for (const item of items) {
-      const product = await productModel.findById(item._id);
-      if (!product) {
-        return res.status(404).json({ success: false, message: `Product with ID ${item._id} not found` });
-      }
-
-      if (product.quantity < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `Not enough stock for product: ${product.name}`,
-        });
-      }
-
-      product.quantity -= item.quantity;
-      await product.save();
-    }
-
-    // Clear user cart
+    // Clear user's cart after order placement
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
 
-    res.json({ success: true, message: 'Order Placed' });
+    res.json({ success: true, message: "Order Placed Successfully" });
+
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+    console.error('Place order error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -406,12 +385,12 @@ export const allOrders = async (req, res) => {
 
 export const userOrders = async (req, res) => {
   try {
-    const { userId } = req.body;
-    const orders = await orderModel.find({ userId });
+    const userId = req.user._id;  // Get userId from auth middleware
+    const orders = await orderModel.find({ userId }).sort({ date: -1 });  // Sort by date, newest first
     res.json({ success: true, orders });
   } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+    console.error('Get user orders error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

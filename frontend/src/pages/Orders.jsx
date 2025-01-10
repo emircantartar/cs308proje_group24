@@ -17,7 +17,12 @@ const Orders = () => {
       const response = await axios.post(
         `${backendUrl}/api/order/userorders`,
         {},
-        { headers: { token } }
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
 
       if (response.data.success) {
@@ -32,8 +37,6 @@ const Orders = () => {
             item.paymentMethod = order.paymentMethod;
             item.date = order.date;
             item.orderId = order._id;
-            // NEW: copy the order's return status if provided by the backend
-            // e.g., order.returnStatus or order.returnRequested
             item.returnStatus = order.returnStatus || 'none'; 
             
             // Push into a flat array for easy rendering
@@ -41,16 +44,18 @@ const Orders = () => {
           });
         });
 
-        // Reverse so newest items appear first
-        setOrderData(allOrdersItem.reverse());
+        // Sort by date, newest first
+        setOrderData(allOrdersItem.sort((a, b) => b.date - a.date));
       }
     } catch (error) {
       console.error('Error loading orders:', error);
+      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+        console.error('Error loading orders:', error.response?.data?.message || 'Failed to load orders');
+      }
     }
   };
 
   // 2) Request return function
-  // Calls backend: POST /api/order/return/:orderId with the user token
   const requestReturn = async (orderId) => {
     try {
       if (!token) return alert('Please log in to request a return.');
@@ -58,36 +63,51 @@ const Orders = () => {
       const response = await axios.post(
         `${backendUrl}/api/order/return/${orderId}`,
         {},
-        { headers: { token } }
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
 
       if (response.data.success) {
         alert('Return request submitted successfully.');
-        // Reload orders so we see updated returnStatus
         loadOrderData();
       } else {
         alert(response.data.message || 'Failed to request return.');
       }
     } catch (error) {
       console.error('requestReturn error:', error);
-      alert('Error requesting return. Please try again.');
+      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+        alert(error.response?.data?.message || 'Error requesting return. Please try again.');
+      }
     }
   };
 
   // 3) Download invoice
   const downloadInvoice = async (orderId) => {
     try {
-      const response = await axios.get(`${backendUrl}/api/order/invoice/${orderId}`, {
-        responseType: 'blob', // ensures the response is treated as a file
-      });
+      const response = await axios.get(
+        `${backendUrl}/api/order/invoice/${orderId}`, 
+        {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/pdf'
+          },
+          responseType: 'blob'
+        }
+      );
 
-      // Create a URL for the blob and open it in a new tab
       const url = window.URL.createObjectURL(
         new Blob([response.data], { type: 'application/pdf' })
       );
       window.open(url, '_blank');
     } catch (error) {
       console.error('Error viewing invoice:', error);
+      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+        alert('Error downloading invoice. Please try again.');
+      }
     }
   };
 
@@ -95,19 +115,26 @@ const Orders = () => {
   const sendInvoice = async (orderId, email) => {
     try {
       const response = await axios.post(
-        `${backendUrl}/api/order/send-invoice`,
+        `${backendUrl}/api/order/invoice/email`,
         { orderId, email },
-        { headers: { token } }
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
       );
 
       if (response.data.success) {
         alert('Invoice emailed successfully!');
       } else {
-        alert('Failed to email invoice.');
+        alert(response.data.message || 'Failed to email invoice.');
       }
     } catch (error) {
       console.error('Error sending invoice:', error);
-      alert('An error occurred while sending the invoice.');
+      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+        alert(error.response?.data?.message || 'Error sending invoice. Please try again.');
+      }
     }
   };
 
