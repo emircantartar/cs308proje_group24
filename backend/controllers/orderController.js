@@ -304,7 +304,7 @@ export const downloadInvoice = async (req, res) => {
     }
 
     // Check authorization - allow both admin and order owner
-    const isAdmin = req.userRole === 'admin' || req.userRole === 'sales_manager';
+    const isAdmin = req.userRole === 'admin' || req.userRole === 'sales_manager' || req.userRole === 'product_manager';
     const isOwner = String(order.userId) === String(req.user?._id);
     
     if (!isAdmin && !isOwner) {

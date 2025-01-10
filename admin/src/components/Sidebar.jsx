@@ -15,14 +15,9 @@ const Sidebar = ({ userRole }) => {
 
         {/* Product Manager specific links */}
         {userRole === 'product_manager' && (
-          <>
-            <NavLink to='/add' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
-              Add Product
-            </NavLink>
-            <NavLink to='/product-manager' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
-              Product Management
-            </NavLink>
-          </>
+          <NavLink to='/add' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
+            Add Product
+          </NavLink>
         )}
 
         {/* Sales Manager specific links */}

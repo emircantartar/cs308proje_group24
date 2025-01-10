@@ -94,7 +94,7 @@ const App = () => {
                 <Route
                   path='/orders'
                   element={
-                    <ProtectedRoute allowedRoles={['admin', 'sales_manager']}>
+                    <ProtectedRoute allowedRoles={['admin', 'sales_manager', 'product_manager']}>
                       <Orders token={token} />
                     </ProtectedRoute>
                   }
@@ -102,7 +102,7 @@ const App = () => {
                 <Route
                   path='/sales-manager'
                   element={
-                    <ProtectedRoute allowedRoles={['admin']}>
+                    <ProtectedRoute allowedRoles={['admin', 'sales_manager']}>
                       <SalesManager token={token} />
                     </ProtectedRoute>
                   }

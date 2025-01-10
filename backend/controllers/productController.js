@@ -301,4 +301,35 @@ const setPrice = async (req, res) => {
     }
 };
 
-export { listProducts, addProduct, removeProduct, singleProduct, applyDiscount, removeDiscount, setPrice };
+// Update product stock
+export const updateStock = async (req, res) => {
+  try {
+    const { productId, quantity } = req.body;
+    
+    // Validate quantity
+    if (quantity < 0) {
+      return res.json({ success: false, message: "Quantity cannot be negative" });
+    }
+
+    const product = await productModel.findByIdAndUpdate(
+      productId,
+      { quantity: Number(quantity) },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.json({ success: false, message: "Product not found" });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Stock updated successfully",
+      product 
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export { addProduct, listProducts, removeProduct, singleProduct, applyDiscount, removeDiscount, setPrice };
