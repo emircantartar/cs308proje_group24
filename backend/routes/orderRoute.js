@@ -10,15 +10,11 @@ import {
   downloadInvoice,
   requestReturn,
   updateReturnStatus,
-  // NEW:
   getReturnRequests
 } from '../controllers/orderController.js';
 
 import adminAuth from '../middleware/adminAuth.js';
-import authUser from '../middleware/auth.js';
-// If you're not using path or orderModel directly here, you can remove these imports.
-// import path from 'path';
-// import orderModel from '../models/orderModel.js';
+import { authUser, authUserOrAdmin } from '../middleware/auth.js';
 
 const orderRouter = express.Router();
 
@@ -27,7 +23,7 @@ orderRouter.post('/list', adminAuth, allOrders);
 orderRouter.post('/status', adminAuth, updateStatus);
 orderRouter.post('/place', authUser, placeOrder);
 orderRouter.post('/userorders', authUser, userOrders);
-orderRouter.get('/invoice/:orderId', authUser, downloadInvoice);
+orderRouter.get('/invoice/:orderId', authUserOrAdmin, downloadInvoice);
 orderRouter.post('/invoice/email', adminAuth, sendInvoiceEmail);
 orderRouter.post('/invoices', adminAuth, getInvoices);
 orderRouter.post('/analytics/revenue', adminAuth, calculateFinancials);

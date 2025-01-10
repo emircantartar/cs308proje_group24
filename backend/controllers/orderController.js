@@ -303,8 +303,11 @@ export const downloadInvoice = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Check if user is authorized to access this order
-    if (String(order.userId) !== String(req.user._id)) {
+    // Check authorization - allow both admin and order owner
+    const isAdmin = req.userRole === 'admin' || req.userRole === 'sales_manager';
+    const isOwner = String(order.userId) === String(req.user?._id);
+    
+    if (!isAdmin && !isOwner) {
       return res.status(403).json({ success: false, message: 'Not authorized to access this order' });
     }
 
