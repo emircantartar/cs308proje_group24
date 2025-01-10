@@ -8,7 +8,7 @@ import Orders from './pages/Orders'
 import SalesManager from './pages/SalesManager'
 import ProductManager from './pages/ProductManager'
 import Login from './components/Login'
-import { ToastContainer } from 'react-toastify';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
 
