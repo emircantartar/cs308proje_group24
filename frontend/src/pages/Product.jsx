@@ -106,6 +106,11 @@ const Product = () => {
         {/* -------- Product Info ---------- */}
         <div className="flex-1">
           <h1 className="font-medium text-2xl mt-2">{productData.name}</h1>
+          {productData.discountRate > 0 && (
+            <div className="mt-2 inline-block bg-red-500 text-white px-3 py-1 rounded-md text-sm">
+              {productData.discountRate}% OFF
+            </div>
+          )}
           <div className="flex items-center gap-1 mt-2">
             <img src={assets.star_icon} alt="" className="w-3.5" />
             <img src={assets.star_icon} alt="" className="w-3.5" />
@@ -114,10 +119,18 @@ const Product = () => {
             <img src={assets.star_dull_icon} alt="" className="w-3.5" />
             <p className="pl-2">(122)</p>
           </div>
-          <p className="mt-5 text-3xl font-medium">
-            {currency}
-            {productData.price}
-          </p>
+          <div className="mt-5 flex items-center gap-3">
+            <p className="text-3xl font-medium">
+              {currency}
+              {Number(productData.price).toFixed(2)}
+            </p>
+            {productData.discountRate > 0 && (
+              <p className="text-xl text-gray-500 line-through">
+                {currency}
+                {Number(productData.originalPrice).toFixed(2)}
+              </p>
+            )}
+          </div>
           <p className="mt-5 text-gray-500 md:w-4/5">{productData.description}</p>
 
           {/* Display Additional Product Info */}

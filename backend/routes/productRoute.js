@@ -24,6 +24,7 @@ productRouter.post('/remove',adminAuth,removeProduct);
 productRouter.post('/single',singleProduct);
 productRouter.get('/list',listProducts);
 productRouter.post('/discount',adminAuth,applyDiscount);
+productRouter.post('/discount/notify',adminAuth,applyDiscount);
 productRouter.post('/remove-discount',adminAuth,removeDiscount);
 productRouter.post('/set-price',adminAuth,setPrice);
 productRouter.post('/update-stock',adminAuth,updateStock);

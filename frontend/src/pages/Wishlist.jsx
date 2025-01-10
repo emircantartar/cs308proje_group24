@@ -115,7 +115,27 @@ const Wishlist = () => {
                 style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }}
               />
               <h3>{product.name}</h3>
-              <p>${product.price}</p>
+              <div style={{ margin: '0.5rem 0' }}>
+                <p style={{ fontWeight: 'bold' }}>${Number(product.price).toFixed(2)}</p>
+                {product.discountRate > 0 && (
+                  <>
+                    <p style={{ 
+                      textDecoration: 'line-through', 
+                      color: '#666',
+                      fontSize: '0.9em' 
+                    }}>
+                      ${Number(product.originalPrice).toFixed(2)}
+                    </p>
+                    <p style={{
+                      color: 'red',
+                      fontWeight: 'bold',
+                      fontSize: '0.9em'
+                    }}>
+                      {product.discountRate}% OFF
+                    </p>
+                  </>
+                )}
+              </div>
               <button
                 style={{
                   backgroundColor: 'red',

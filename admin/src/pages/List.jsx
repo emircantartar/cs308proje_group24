@@ -213,7 +213,7 @@ const List = ({ token }) => {
                 {item.subCategory && ` / ${item.subCategory}`}
               </div>
             )}
-            <p>{currency}{item.price}</p>
+            <p>{currency}{Number(item.price).toFixed(2)}</p>
             <div>
               {editingStock === item._id ? (
                 <div className="flex items-center gap-2">

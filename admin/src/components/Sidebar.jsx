@@ -5,10 +5,14 @@ const Sidebar = ({ userRole }) => {
   return (
     <div className='w-[max(25vw,250px)] bg-white min-h-[90vh] py-8 px-4'>
       <div className='flex flex-col gap-2'>
+        {/* Products List - only for product managers and admins */}
+        {(userRole === 'product_manager' || userRole === 'admin') && (
+          <NavLink to='/list' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
+            Products List
+          </NavLink>
+        )}
+        
         {/* Common links for all roles */}
-        <NavLink to='/list' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
-          Products List
-        </NavLink>
         <NavLink to='/orders' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
           Orders
         </NavLink>

@@ -195,33 +195,62 @@ const applyDiscount = async (req, res) => {
     }
 
     // Find users with these products in their wishlist
-    const users = await userModel.find({ wishlist: { $in: productIds } });
+    const users = await userModel.find({ 'wishlist': { $in: productIds } }).populate('email');
 
-    // Create notifications for users
+    // Create notifications and send emails
+    const notifications = [];
     for (const user of users) {
-      const userProducts = updatedProducts.filter((product) =>
-        user.wishlist.includes(product.id)
+      const userProducts = updatedProducts.filter((updatedProduct) =>
+        user.wishlist.includes(updatedProduct.id)
       );
 
       if (userProducts.length > 0) {
-        for (const product of userProducts) {
-          await notificationModel.create({
+        for (const discountedProduct of userProducts) {
+          // Create notification
+          notifications.push({
             user: user._id,
-            product: product.id,
-            message: `The product "${product.name}" in your wishlist is now ${product.discountRate}% off!`,
+            product: discountedProduct.id,
+            message: `The product "${discountedProduct.name}" in your wishlist is now ${discountRate}% off! New price: $${discountedProduct.newPrice.toFixed(2)}`,
             isRead: false,
           });
+
+          // Send email notification
+          const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: user.email,
+            subject: 'Price Drop Alert! 🎉',
+            html: `
+              <h2>Great news! A product in your wishlist is now on sale!</h2>
+              <p><strong>${discountedProduct.name}</strong> is now ${discountRate}% off!</p>
+              <p>Original price: $${discountedProduct.originalPrice.toFixed(2)}</p>
+              <p>New price: $${discountedProduct.newPrice.toFixed(2)}</p>
+              <p>Don't miss out on this great deal!</p>
+              <a href="${process.env.FRONTEND_URL}/product/${discountedProduct.id}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">View Product</a>
+            `
+          };
+
+          try {
+            await transporter.sendMail(mailOptions);
+            console.log(`Email sent to ${user.email} for product ${discountedProduct.name}`);
+          } catch (error) {
+            console.error(`Error sending email to ${user.email}:`, error);
+          }
         }
       }
     }
 
+    // Bulk insert notifications if any exist
+    if (notifications.length > 0) {
+      await notificationModel.insertMany(notifications);
+    }
+
     res.json({
       success: true,
-      message: 'Discount applied and notifications created',
+      message: 'Discount applied and notifications sent',
       updatedProducts,
     });
   } catch (error) {
-    console.log(error);
+    console.error('Error in applyDiscount:', error);
     res.json({ success: false, message: error.message });
   }
 };

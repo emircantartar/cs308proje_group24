@@ -154,6 +154,23 @@ const SalesManager = ({ token }) => {
     fetchProducts();
   }, []);
 
+  // Refresh products in frontend
+  const refreshProducts = async () => {
+    try {
+      // Emit a custom event that ShopContext will listen to
+      const event = new CustomEvent('refreshProducts');
+      window.dispatchEvent(event);
+      
+      // Also refresh local products
+      const response = await axios.get(`${backendUrl}/api/product/list`);
+      if (response.data.success) {
+        setProducts(response.data.products);
+      }
+    } catch (error) {
+      console.error('Error refreshing products:', error);
+    }
+  };
+
   const handleApplyDiscount = async () => {
     try {
       if (!selectedProducts.length) {
@@ -173,21 +190,7 @@ const SalesManager = ({ token }) => {
 
       if (response.data.success) {
         toast.success('Discount applied successfully');
-        const updatedProducts = await axios.get(`${backendUrl}/api/product/list`);
-        setProducts(updatedProducts.data.products);
-
-        // Notify wishlist users about the discount
-        const notifyResponse = await axios.post(
-          `${backendUrl}/api/notifications/send`,
-          { productIds: selectedProducts, discountRate },
-          { headers: { token } }
-        );
-        if (notifyResponse.data.success) {
-          toast.success('Notifications sent to users');
-        } else {
-          toast.warning('Discount applied, but notification failed');
-        }
-
+        await refreshProducts(); // Refresh products after discount
         setSelectedProducts([]);
         setDiscountRate(0);
       } else {
@@ -198,7 +201,6 @@ const SalesManager = ({ token }) => {
       toast.error(error.response?.data?.message || 'Error applying discount');
     }
   };
-
 
   const handleRemoveDiscount = async () => {
     try {
@@ -220,8 +222,7 @@ const SalesManager = ({ token }) => {
         } else {
           toast.info('No discounted products were selected');
         }
-        const updatedProducts = await axios.get(`${backendUrl}/api/product/list`);
-        setProducts(updatedProducts.data.products);
+        await refreshProducts(); // Refresh products after removing discount
         setSelectedProducts([]);
         setDiscountRate(0);
       } else {
@@ -252,12 +253,9 @@ const SalesManager = ({ token }) => {
 
       if (response.data.success) {
         toast.success('Price updated successfully');
-        const updatedProducts = await axios.get(`${backendUrl}/api/product/list`);
-        if (updatedProducts.data.success) {
-          setProducts(updatedProducts.data.products);
-          setSelectedProducts([]);
-          setNewPrice('');
-        }
+        await refreshProducts(); // Refresh products after price update
+        setSelectedProducts([]);
+        setNewPrice('');
       } else {
         toast.error(response.data.message || 'Error updating price');
       }

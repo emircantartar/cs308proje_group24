@@ -36,6 +36,18 @@ const ShopContextProvider = (props) => {
         return () => axios.interceptors.response.eject(interceptor);
     }, [navigate]);
 
+    // Add event listener for product refreshes
+    useEffect(() => {
+        const handleRefreshProducts = () => {
+            getProductsData();
+        };
+
+        window.addEventListener('refreshProducts', handleRefreshProducts);
+        return () => {
+            window.removeEventListener('refreshProducts', handleRefreshProducts);
+        };
+    }, []);
+
     const addToCart = async (itemId, size) => {
         if (!size) {
             toast.error('Select Product Size');
