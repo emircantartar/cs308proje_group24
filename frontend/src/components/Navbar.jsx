@@ -101,7 +101,7 @@ const Navbar = () => {
         {/* Notifications Icon */}
         <div className="relative group">
           <img
-            src={assets.bell_icon} // Replace with your bell icon asset
+            src={assets.notification_icon}
             className="w-5 cursor-pointer"
             alt="Notifications"
             onClick={() => {
@@ -173,7 +173,7 @@ const Navbar = () => {
 
         {/* Wishlist Icon */}
         <Link to="/wishlist" className="relative">
-          <img src={assets.heart_icon} className="w-5 min-w-5" alt="Wishlist" />
+          <img src={assets.wishlist_icon} className="w-5 min-w-5" alt="Wishlist" />
           {wishlist.length > 0 && (
             <p className="absolute right-[-5px] bottom-[-5px] w-4 text-center leading-4 bg-red-600 text-white aspect-square rounded-full text-[8px]">
               {wishlist.length}

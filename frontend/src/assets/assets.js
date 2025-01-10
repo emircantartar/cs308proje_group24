@@ -1,4 +1,3 @@
-
 import logo from './logo.png'
 import cart_icon from './cart_icon.png'
 import bin_icon from './bin_icon.png'
@@ -12,7 +11,8 @@ import star_icon from './star_icon.png'
 import menu_icon from './menu_icon.png'
 import cross_icon from './cross_icon.png'
 import support_img from './support_img.png'
-//import about_img from './about_img.png'
+import wishlist_icon from './wishlist.png'
+import notification_icon from './notification.png'
 
 export const assets = {
     logo,
@@ -27,8 +27,8 @@ export const assets = {
     bin_icon,
     support_img,
     menu_icon,
-    //about_img,
-    //contact_img,
-    cross_icon
+    cross_icon,
+    wishlist_icon,
+    notification_icon
 }
 
