@@ -332,4 +332,167 @@ export const updateStock = async (req, res) => {
   }
 };
 
+// Get all categories
+export const getCategories = async (req, res) => {
+  try {
+    // Use aggregation to get unique categories and their product counts
+    const categories = await productModel.aggregate([
+      {
+        $group: {
+          _id: "$category",
+          count: { $sum: 1 },
+          subCategories: { $addToSet: "$subCategory" }
+        }
+      },
+      {
+        $project: {
+          category: "$_id",
+          count: 1,
+          subCategories: 1,
+          _id: 0
+        }
+      },
+      { $sort: { category: 1 } }
+    ]);
+
+    res.json({ 
+      success: true, 
+      categories
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// Add new category
+export const addCategory = async (req, res) => {
+  try {
+    const { category, subCategories } = req.body;
+    
+    // Validate input
+    if (!category) {
+      return res.json({ success: false, message: "Category name is required" });
+    }
+
+    // Check if category already exists in the aggregation results
+    const existingCategory = await productModel.aggregate([
+      {
+        $group: {
+          _id: "$category",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    if (existingCategory.some(cat => cat._id === category)) {
+      return res.json({ success: false, message: "Category already exists" });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Category added successfully",
+      category: {
+        category,
+        subCategories: subCategories || [],
+        count: 0
+      }
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// Update category
+export const updateCategory = async (req, res) => {
+  try {
+    const { oldCategory, newCategory, subCategories } = req.body;
+    
+    // Validate input
+    if (!oldCategory || !newCategory) {
+      return res.json({ success: false, message: "Both old and new category names are required" });
+    }
+
+    // Check if new category already exists (unless it's the same as old)
+    if (oldCategory !== newCategory) {
+      const existingProducts = await productModel.findOne({ category: newCategory });
+      if (existingProducts) {
+        return res.json({ success: false, message: "New category name already exists" });
+      }
+    }
+
+    // Update all products in the category
+    await productModel.updateMany(
+      { category: oldCategory },
+      { 
+        $set: { 
+          category: newCategory,
+          subCategory: subCategories?.[0] || '' // Update subcategory if provided
+        }
+      }
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Category updated successfully"
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// Delete category and all its products
+export const deleteCategory = async (req, res) => {
+  try {
+    const { category } = req.body;
+    
+    // Delete all products in the category
+    await productModel.deleteMany({ category });
+
+    res.json({ 
+      success: true, 
+      message: "Category and its products deleted successfully"
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// Update product category
+export const updateProductCategory = async (req, res) => {
+  try {
+    const { productId, category, subCategory } = req.body;
+    
+    // Validate input
+    if (!productId || !category) {
+      return res.json({ success: false, message: "Product ID and category are required" });
+    }
+
+    const product = await productModel.findByIdAndUpdate(
+      productId,
+      { 
+        category,
+        subCategory: subCategory || ''
+      },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.json({ success: false, message: "Product not found" });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Product category updated successfully",
+      product 
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
 export { addProduct, listProducts, removeProduct, singleProduct, applyDiscount, removeDiscount, setPrice };

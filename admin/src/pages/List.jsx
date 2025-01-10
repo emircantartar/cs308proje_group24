@@ -7,6 +7,11 @@ const List = ({ token }) => {
   const [list, setList] = useState([])
   const [editingStock, setEditingStock] = useState(null)
   const [newStockValue, setNewStockValue] = useState('')
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [categories, setCategories] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedSubCategory, setSelectedSubCategory] = useState('')
+  const [availableSubCategories, setAvailableSubCategories] = useState([])
 
   const fetchList = async () => {
     try {
@@ -22,6 +27,20 @@ const List = ({ token }) => {
       toast.error(error.message)
     }
   }
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(`${backendUrl}/api/product/categories`);
+      if (response.data.success) {
+        setCategories(response.data.categories);
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error('Error fetching categories');
+    }
+  };
 
   const removeProduct = async (id) => {
     try {
@@ -76,8 +95,57 @@ const List = ({ token }) => {
     updateStock(productId);
   }
 
+  const handleCategoryEdit = (product) => {
+    setEditingCategory(product._id);
+    setSelectedCategory(product.category);
+    const categoryData = categories.find(cat => cat.category === product.category);
+    if (categoryData) {
+      setAvailableSubCategories(categoryData.subCategories);
+      setSelectedSubCategory(product.subCategory);
+    }
+  }
+
+  const handleCategoryChange = (newCategory) => {
+    setSelectedCategory(newCategory);
+    const categoryData = categories.find(cat => cat.category === newCategory);
+    if (categoryData) {
+      setAvailableSubCategories(categoryData.subCategories);
+      if (categoryData.subCategories.length > 0) {
+        setSelectedSubCategory(categoryData.subCategories[0]);
+      } else {
+        setSelectedSubCategory('');
+      }
+    }
+  }
+
+  const updateProductCategory = async (productId) => {
+    try {
+      const response = await axios.post(
+        `${backendUrl}/api/product/update-category`,
+        {
+          productId,
+          category: selectedCategory,
+          subCategory: selectedSubCategory
+        },
+        { headers: { token } }
+      );
+
+      if (response.data.success) {
+        toast.success('Product category updated successfully');
+        setEditingCategory(null);
+        await fetchList();
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error('Error updating product category');
+    }
+  }
+
   useEffect(() => {
-    fetchList()
+    fetchList();
+    fetchCategories();
   }, [])
 
   return (
@@ -100,7 +168,51 @@ const List = ({ token }) => {
           <div className='grid grid-cols-[1fr_3fr_1fr] md:grid-cols-[1fr_3fr_1fr_1fr_1fr_1fr_1fr] items-center gap-2 py-1 px-2 border text-sm' key={index}>
             <img className='w-12' src={item.image[0]} alt="" />
             <p>{item.name}</p>
-            <p>{item.category}</p>
+            {editingCategory === item._id ? (
+              <div className="flex flex-col gap-2">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  className="w-full px-2 py-1 border rounded"
+                >
+                  {categories.map((cat) => (
+                    <option key={cat.category} value={cat.category}>
+                      {cat.category}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedSubCategory}
+                  onChange={(e) => setSelectedSubCategory(e.target.value)}
+                  className="w-full px-2 py-1 border rounded"
+                >
+                  {availableSubCategories.map((subCat) => (
+                    <option key={subCat} value={subCat}>
+                      {subCat}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => updateProductCategory(item._id)}
+                    className="text-green-600 hover:text-green-800"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    onClick={() => setEditingCategory(null)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="cursor-pointer hover:text-blue-600" onClick={() => handleCategoryEdit(item)}>
+                {item.category}
+                {item.subCategory && ` / ${item.subCategory}`}
+              </div>
+            )}
             <p>{currency}{item.price}</p>
             <div>
               {editingStock === item._id ? (
@@ -134,9 +246,20 @@ const List = ({ token }) => {
                 </p>
               )}
             </div>
-            <p className='text-center cursor-pointer text-blue-600 hover:text-blue-800' onClick={() => handleStockEdit(item._id, item.quantity)}>
-              Edit Stock
-            </p>
+            <div className="text-center">
+              <button
+                onClick={() => handleCategoryEdit(item)}
+                className="text-blue-600 hover:text-blue-800 mr-2"
+              >
+                Edit Category
+              </button>
+              <button
+                onClick={() => handleStockEdit(item._id, item.quantity)}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                Edit Stock
+              </button>
+            </div>
             <p onClick={() => removeProduct(item._id)} className='text-center cursor-pointer text-red-600 hover:text-red-800'>
               Remove
             </p>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { assets } from '../assets/assets';
 import axios from 'axios';
 import { backendUrl } from '../App';
@@ -13,8 +13,8 @@ const Add = ({ token }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [category, setCategory] = useState('Men');
-  const [subCategory, setSubCategory] = useState('Topwear');
+  const [category, setCategory] = useState('');
+  const [subCategory, setSubCategory] = useState('');
   const [bestseller, setBestseller] = useState(false);
   const [sizes, setSizes] = useState([]);
   const [model, setModel] = useState('');
@@ -22,6 +22,52 @@ const Add = ({ token }) => {
   const [quantity, setQuantity] = useState('');
   const [warranty, setWarranty] = useState('');
   const [distributor, setDistributor] = useState('');
+
+  // Add state for categories
+  const [categories, setCategories] = useState([]);
+  const [availableSubCategories, setAvailableSubCategories] = useState([]);
+
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(`${backendUrl}/api/product/categories`);
+      if (response.data.success) {
+        setCategories(response.data.categories);
+        // Set initial category and subcategory if available
+        if (response.data.categories.length > 0) {
+          const firstCategory = response.data.categories[0];
+          setCategory(firstCategory.category);
+          setAvailableSubCategories(firstCategory.subCategories);
+          if (firstCategory.subCategories.length > 0) {
+            setSubCategory(firstCategory.subCategories[0]);
+          }
+        }
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error('Error fetching categories');
+    }
+  };
+
+  // Update subcategories when category changes
+  const handleCategoryChange = (selectedCategory) => {
+    setCategory(selectedCategory);
+    const categoryData = categories.find(cat => cat.category === selectedCategory);
+    if (categoryData) {
+      setAvailableSubCategories(categoryData.subCategories);
+      if (categoryData.subCategories.length > 0) {
+        setSubCategory(categoryData.subCategories[0]);
+      } else {
+        setSubCategory('');
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
@@ -54,8 +100,6 @@ const Add = ({ token }) => {
         setName('');
         setDescription('');
         setPrice('');
-        setCategory('Men');
-        setSubCategory('Topwear');
         setBestseller(false);
         setSizes([]);
         setModel('');
@@ -67,6 +111,7 @@ const Add = ({ token }) => {
         setImage2(false);
         setImage3(false);
         setImage4(false);
+        // Don't reset category/subcategory as they're likely to add more products to the same category
       } else {
         toast.error(response.data.message);
       }
@@ -140,20 +185,34 @@ const Add = ({ token }) => {
       <div className="flex flex-col sm:flex-row gap-2 w-full sm:gap-8">
         <div>
           <p className="mb-2">Product Category</p>
-          <select onChange={(e) => setCategory(e.target.value)} value={category} className="w-full px-3 py-2">
-            <option value="Men">Men</option>
-            <option value="Women">
-            Women</option>
-            <option value="Kids">Kids</option>
+          <select 
+            onChange={(e) => handleCategoryChange(e.target.value)} 
+            value={category} 
+            className="w-full px-3 py-2"
+            required
+          >
+            <option value="">Select Category</option>
+            {categories.map((cat) => (
+              <option key={cat.category} value={cat.category}>
+                {cat.category}
+              </option>
+            ))}
           </select>
         </div>
 
         <div>
           <p className="mb-2">Sub Category</p>
-          <select onChange={(e) => setSubCategory(e.target.value)} value={subCategory} className="w-full px-3 py-2">
-            <option value="Topwear">Topwear</option>
-            <option value="Bottomwear">Bottomwear</option>
-            <option value="Winterwear">Winterwear</option>
+          <select 
+            onChange={(e) => setSubCategory(e.target.value)} 
+            value={subCategory} 
+            className="w-full px-3 py-2"
+          >
+            <option value="">Select Sub-Category</option>
+            {availableSubCategories.map((subCat) => (
+              <option key={subCat} value={subCat}>
+                {subCat}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -165,6 +224,7 @@ const Add = ({ token }) => {
             className="w-full px-3 py-2 sm:w-[120px]"
             type="number"
             placeholder="Price"
+            required
           />
         </div>
       </div>

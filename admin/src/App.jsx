@@ -6,7 +6,7 @@ import Add from './pages/Add'
 import List from './pages/List'
 import Orders from './pages/Orders'
 import SalesManager from './pages/SalesManager'
-import ProductManager from './pages/ProductManager'
+import Categories from './pages/Categories'
 import Login from './components/Login'
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -108,10 +108,10 @@ const App = () => {
                   }
                 />
                 <Route
-                  path='/product-manager'
+                  path='/categories'
                   element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <ProductManager token={token} />
+                    <ProtectedRoute allowedRoles={['admin', 'product_manager']}>
+                      <Categories token={token} />
                     </ProtectedRoute>
                   }
                 />

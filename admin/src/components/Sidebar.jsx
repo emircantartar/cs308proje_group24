@@ -14,14 +14,19 @@ const Sidebar = ({ userRole }) => {
         </NavLink>
 
         {/* Product Manager specific links */}
-        {userRole === 'product_manager' && (
-          <NavLink to='/add' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
-            Add Product
-          </NavLink>
+        {(userRole === 'product_manager' || userRole === 'admin') && (
+          <>
+            <NavLink to='/add' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
+              Add Product
+            </NavLink>
+            <NavLink to='/categories' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
+              Categories
+            </NavLink>
+          </>
         )}
 
         {/* Sales Manager specific links */}
-        {userRole === 'sales_manager' && (
+        {(userRole === 'sales_manager' || userRole === 'admin') && (
           <NavLink to='/sales-manager' className={({ isActive }) => isActive ? 'bg-gray-100 p-4 rounded-lg' : 'p-4'}>
             Sales Management
           </NavLink>
