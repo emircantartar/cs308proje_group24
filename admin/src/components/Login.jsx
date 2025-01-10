@@ -6,22 +6,42 @@ import { toast } from 'react-toastify'
 const Login = ({ setToken, setUserRole }) => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   const loginHandler = async (e) => {
     e.preventDefault()
+    setIsLoading(true)
 
     try {
-      const response = await axios.post(backendUrl + '/api/user/admin', { email, password })
+      const response = await axios.post(`${backendUrl}/api/user/admin`, { 
+        email, 
+        password 
+      });
+
       if (response.data.success) {
-        setToken(response.data.token)
-        setUserRole(response.data.role)
-        toast.success('Login Successful')
+        const { token, role } = response.data;
+        
+        // Set token in axios defaults
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Update state and localStorage
+        setToken(token);
+        setUserRole(role);
+        localStorage.setItem('token', token);
+        localStorage.setItem('userRole', role);
+        
+        toast.success('Login Successful');
       } else {
-        toast.error(response.data.message)
+        toast.error(response.data.message || 'Login failed');
       }
     } catch (error) {
-      console.log(error)
-      toast.error(error.message)
+      console.error('Login error:', error);
+      toast.error(
+        error.response?.data?.message || 
+        'Unable to login. Please check your credentials.'
+      );
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -39,6 +59,7 @@ const Login = ({ setToken, setUserRole }) => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={isLoading}
           />
         </div>
         <div className='mb-6'>
@@ -51,14 +72,18 @@ const Login = ({ setToken, setUserRole }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={isLoading}
           />
         </div>
         <div className='flex items-center justify-between'>
           <button
-            className='bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full'
+            className={`bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
             type='submit'
+            disabled={isLoading}
           >
-            Sign In
+            {isLoading ? 'Signing In...' : 'Sign In'}
           </button>
         </div>
       </form>

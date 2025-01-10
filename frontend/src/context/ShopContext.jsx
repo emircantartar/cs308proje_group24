@@ -14,9 +14,27 @@ const ShopContextProvider = (props) => {
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
-    const [token, setToken] = useState('')
+    const [token, setToken] = useState(localStorage.getItem('token') || '')
     const navigate = useNavigate();
 
+    // Add axios interceptor for handling 401 errors
+    useEffect(() => {
+        const interceptor = axios.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if (error.response?.status === 401) {
+                    // Clear token and redirect to login
+                    setToken('');
+                    localStorage.removeItem('token');
+                    navigate('/login');
+                    toast.error('Session expired. Please login again.');
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return () => axios.interceptors.response.eject(interceptor);
+    }, [navigate]);
 
     const addToCart = async (itemId, size) => {
 
@@ -124,16 +142,29 @@ const ShopContextProvider = (props) => {
         }
     }
 
-    const getUserCart = async ( token ) => {
+    const getUserCart = async (token) => {
+        if (!token) return;
+        
         try {
+            const response = await axios.post(
+                `${backendUrl}/api/cart/get`,
+                {},
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
             
-            const response = await axios.post(backendUrl + '/api/cart/get',{},{headers:{token}})
             if (response.data.success) {
                 setCartItems(response.data.cartData)
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+                toast.error(error.response?.data?.message || 'Error fetching cart');
+            }
         }
     }
 
@@ -142,19 +173,17 @@ const ShopContextProvider = (props) => {
     }, [])
 
     useEffect(() => {
-        if (!token && localStorage.getItem('token')) {
-            setToken(localStorage.getItem('token'))
-            getUserCart(localStorage.getItem('token'))
-        }
         if (token) {
             getUserCart(token)
+        } else {
+            setCartItems({});  // Clear cart when no token
         }
     }, [token])
 
     const value = {
         products, currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
-        cartItems, addToCart,setCartItems,
+        cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity,
         getCartAmount, navigate, backendUrl,
         setToken, token
