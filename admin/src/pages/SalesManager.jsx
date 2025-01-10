@@ -175,6 +175,19 @@ const SalesManager = ({ token }) => {
         toast.success('Discount applied successfully');
         const updatedProducts = await axios.get(`${backendUrl}/api/product/list`);
         setProducts(updatedProducts.data.products);
+
+        // Notify wishlist users about the discount
+        const notifyResponse = await axios.post(
+          `${backendUrl}/api/notifications/send`,
+          { productIds: selectedProducts, discountRate },
+          { headers: { token } }
+        );
+        if (notifyResponse.data.success) {
+          toast.success('Notifications sent to users');
+        } else {
+          toast.warning('Discount applied, but notification failed');
+        }
+
         setSelectedProducts([]);
         setDiscountRate(0);
       } else {
@@ -185,6 +198,7 @@ const SalesManager = ({ token }) => {
       toast.error(error.response?.data?.message || 'Error applying discount');
     }
   };
+
 
   const handleRemoveDiscount = async () => {
     try {
