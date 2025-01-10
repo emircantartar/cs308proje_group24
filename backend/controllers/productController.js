@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import productModel from "../models/productModel.js";
 import userModel from "../models/userModel.js";
+import notificationModel from "../models/notificationModel.js";
 import nodemailer from 'nodemailer';
 
 // Email configuration
@@ -150,85 +151,66 @@ const singleProduct = async (req, res) => {
 
 // Apply discount and notify users
 const applyDiscount = async (req, res) => {
-    try {
-        const { productIds, discountRate } = req.body;
-        
-        // Get all products to be discounted
-        const products = await productModel.find({ _id: { $in: productIds } });
-        
-        // Update prices and collect product details
-        const updatedProducts = [];
-        for (const product of products) {
-            // If no originalPrice is set, use current price as original
-            if (!product.originalPrice) {
-                product.originalPrice = product.price;
-            }
-            
-            const newPrice = product.originalPrice * (1 - discountRate / 100);
-            
-            await productModel.findByIdAndUpdate(product._id, {
-                price: newPrice,
-                originalPrice: product.originalPrice,  // Ensure originalPrice is saved
-                discountRate: discountRate
-            });
-            
-            updatedProducts.push({
-                id: product._id,
-                name: product.name,
-                originalPrice: product.originalPrice,
-                newPrice,
-                discountRate
-            });
-        }
-        
-        // Find users with these products in their wishlist
-        const users = await userModel.find({
-            'wishlist': { $in: productIds }
-        });
-        
-        // Send notifications to users
-        for (const user of users) {
-            const userProducts = updatedProducts.filter(product => 
-                user.wishlist.includes(product.id)
-            );
-            
-            if (userProducts.length > 0) {
-                // Send email notification
-                const emailContent = `
-                    Hello ${user.name},
-                    
-                    Good news! The following items in your wishlist are now on discount:
-                    
-                    ${userProducts.map(product => `
-                        ${product.name}
-                        Original Price: $${product.originalPrice}
-                        New Price: $${product.newPrice}
-                        Discount: ${discountRate}%
-                    `).join('\n')}
-                    
-                    Don't miss out on these great deals!
-                `;
-                
-                await transporter.sendMail({
-                    from: process.env.EMAIL_USER,
-                    to: user.email,
-                    subject: 'Products in your wishlist are now on discount!',
-                    text: emailContent
-                });
-            }
-        }
-        
-        res.json({
-            success: true,
-            message: 'Discount applied and users notified',
-            updatedProducts
-        });
-        
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+  try {
+    const { productIds, discountRate } = req.body;
+
+    const products = await productModel.find({ _id: { $in: productIds } });
+    const updatedProducts = [];
+
+    for (const product of products) {
+      if (!product.originalPrice) {
+        product.originalPrice = product.price;
+      }
+
+      const newPrice = product.originalPrice * (1 - discountRate / 100);
+
+      await productModel.findByIdAndUpdate(product._id, {
+        price: newPrice,
+        originalPrice: product.originalPrice,
+        discountRate,
+      });
+
+      updatedProducts.push({
+        id: product._id,
+        name: product.name,
+        originalPrice: product.originalPrice,
+        newPrice,
+        discountRate,
+      });
     }
+
+    // Find users with these products in their wishlist
+    const users = await userModel.find({ wishlist: { $in: productIds } });
+
+    // Create notifications for users
+    for (const user of users) {
+      const userProducts = updatedProducts.filter((product) =>
+        user.wishlist.includes(product.id)
+      );
+
+      if (userProducts.length > 0) {
+        for (const product of userProducts) {
+          await notificationModel.create({
+            user: user._id,
+            product: product.id,
+            message: `The product "${product.name}" in your wishlist is now ${product.discountRate}% off!`,
+            isRead: false,
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Discount applied and notifications created',
+      updatedProducts,
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
 };
+
 
 // Remove discount
 const removeDiscount = async (req, res) => {

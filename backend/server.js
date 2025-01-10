@@ -1,31 +1,52 @@
-import express from 'express'
-import cors from 'cors'
-import 'dotenv/config'
-import connectDB from './config/mongodb.js'
-import connectCloudinary from './config/cloudinary.js'
-import userRouter from './routes/userRoute.js'
-import productRouter from './routes/productRoute.js'
-import cartRouter from './routes/cartRoute.js'
-import orderRouter from './routes/orderRoute.js'
+import express from 'express';
+import cors from 'cors';
+import 'dotenv/config';
+import connectDB from './config/mongodb.js';
+import connectCloudinary from './config/cloudinary.js';
+import userRouter from './routes/userRoute.js';
+import productRouter from './routes/productRoute.js';
+import cartRouter from './routes/cartRoute.js';
+import orderRouter from './routes/orderRoute.js';
+import wishlistRouter from './routes/wishlistRoute.js';
+import notificationRouter from './routes/notificationRoute.js';
 
-// App Config
-const app = express()
-const port = process.env.PORT || 4000
-connectDB()
-connectCloudinary()
+const app = express();
+const port = process.env.PORT || 4000;
 
-// middlewares
-app.use(express.json())
-app.use(cors())
+// Connect to MongoDB and Cloudinary
+connectDB();
+connectCloudinary();
 
-// api endpoints
-app.use('/api/user',userRouter)
-app.use('/api/product',productRouter)
-app.use('/api/cart',cartRouter)
-app.use('/api/order',orderRouter)
+// Middlewares
+app.use(express.json());
+app.use(
+  cors({
+    origin: ['http://localhost:5173'], // Frontend URL
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'token'], // Include 'token' for CORS
+  })
+);
 
-app.get('/',(req,res)=>{
-    res.send("API Working")
-})
+// Debug incoming headers (for troubleshooting)
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  console.log('Incoming Headers:', req.headers);
+  next();
+});
 
-app.listen(port, ()=> console.log('Server started on PORT : '+ port))
+// API endpoints
+app.use('/api/user', userRouter);
+app.use('/api/product', productRouter);
+app.use('/api/cart', cartRouter);
+app.use('/api/order', orderRouter);
+app.use('/api/wishlist', wishlistRouter);
+app.use('/api/notifications', notificationRouter);
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.send('API Working');
+});
+
+// Start server
+app.listen(port, () => console.log(`Server started on PORT: ${port}`));
