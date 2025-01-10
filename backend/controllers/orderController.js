@@ -359,6 +359,31 @@ export const placeOrder = async (req, res) => {
     const { address, items, amount, paymentMethod } = req.body;
     const userId = req.user._id;  // Get userId from auth middleware
 
+    // Update product quantities
+    for (const item of items) {
+      const product = await productModel.findById(item._id);
+      if (!product) {
+        return res.status(404).json({ 
+          success: false, 
+          message: `Product ${item.name} not found` 
+        });
+      }
+      
+      // Check if enough quantity is available
+      if (product.quantity < item.quantity) {
+        return res.status(400).json({ 
+          success: false, 
+          message: `Not enough stock for ${item.name}. Available: ${product.quantity}` 
+        });
+      }
+
+      // Decrease the product quantity
+      await productModel.findByIdAndUpdate(
+        item._id,
+        { $inc: { quantity: -item.quantity } }
+      );
+    }
+
     // Create new order
     const newOrder = new orderModel({
       userId,
