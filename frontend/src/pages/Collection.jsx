@@ -4,6 +4,7 @@ import { ShopContext } from '../context/ShopContext'
 import { assets } from '../assets/assets';
 import Title from '../components/Title';
 import ProductItem from '../components/ProductItem';
+import { use } from 'react';
 
 const Collection = () => {
   
@@ -13,8 +14,9 @@ const Collection = () => {
   const [category,setCategory] = useState([]);
   const [subCategory,setSubCategory] = useState([]);
   const [sortType,setSortType] = useState('relavent')
+  const {backendUrl}=useContext(ShopContext)
   const [categoryCounts, setCategoryCounts] = useState([]); // State to store category counts
-
+  
 
   const toggleCategory = (e) => {
 
