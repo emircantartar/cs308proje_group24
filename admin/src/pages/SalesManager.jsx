@@ -27,18 +27,24 @@ ChartJS.register(
 );
 
 const SalesManager = ({ token }) => {
+  // ---------------------
   // State for discount management
+  // ---------------------
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [discountRate, setDiscountRate] = useState(0);
   const [newPrice, setNewPrice] = useState('');
 
+  // ---------------------
   // State for invoice management
+  // ---------------------
   const [invoices, setInvoices] = useState([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  // ---------------------
   // State for financial analytics
+  // ---------------------
   const [revenueData, setRevenueData] = useState({
     dates: [],
     revenue: [],
@@ -46,7 +52,14 @@ const SalesManager = ({ token }) => {
     costs: []
   });
 
+  // ---------------------
+  // State for return/refund management
+  // ---------------------
+  const [returns, setReturns] = useState([]);
+
+  // ---------------------
   // Chart configuration
+  // ---------------------
   const chartData = {
     labels: revenueData.dates.map(date => new Date(date).toLocaleDateString()),
     datasets: [
@@ -100,37 +113,20 @@ const SalesManager = ({ token }) => {
       },
       tooltip: {
         mode: 'index',
-        intersect: false,
-        callbacks: {
-          label: function(context) {
-            return `Revenue: ${currency}${context.parsed.y}`;
-          }
-        }
+        intersect: false
       }
     },
     scales: {
       x: {
-        grid: {
-          display: false
-        },
-        ticks: {
-          font: {
-            size: 12
-          }
-        }
+        grid: { display: false },
+        ticks: { font: { size: 12 } }
       },
       y: {
         beginAtZero: true,
-        grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
-        },
+        grid: { color: 'rgba(0, 0, 0, 0.1)' },
         ticks: {
-          font: {
-            size: 12
-          },
-          callback: function(value) {
-            return `${currency}${value}`;
-          }
+          font: { size: 12 },
+          callback: value => `${currency}${value}`
         }
       }
     },
@@ -141,7 +137,9 @@ const SalesManager = ({ token }) => {
     }
   };
 
-  // Fetch products
+  // ----------------------------------------------------
+  // 1) DISCOUNT MANAGEMENT
+  // ----------------------------------------------------
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -156,14 +154,12 @@ const SalesManager = ({ token }) => {
     fetchProducts();
   }, []);
 
-  // Apply discount
   const handleApplyDiscount = async () => {
     try {
-      if (!selectedProducts || selectedProducts.length === 0) {
+      if (!selectedProducts.length) {
         toast.error('Please select at least one product');
         return;
       }
-
       if (!discountRate || discountRate <= 0 || discountRate > 100) {
         toast.error('Please enter a valid discount rate between 1 and 100');
         return;
@@ -171,19 +167,14 @@ const SalesManager = ({ token }) => {
 
       const response = await axios.post(
         `${backendUrl}/api/product/discount`,
-        {
-          productIds: selectedProducts,
-          discountRate: parseFloat(discountRate)
-        },
+        { productIds: selectedProducts, discountRate: parseFloat(discountRate) },
         { headers: { token } }
       );
 
       if (response.data.success) {
         toast.success('Discount applied successfully');
-        // Refresh products list
         const updatedProducts = await axios.get(`${backendUrl}/api/product/list`);
         setProducts(updatedProducts.data.products);
-        // Reset selection and discount rate
         setSelectedProducts([]);
         setDiscountRate(0);
       } else {
@@ -195,39 +186,30 @@ const SalesManager = ({ token }) => {
     }
   };
 
-  // Remove discount
   const handleRemoveDiscount = async () => {
     try {
-      if (!selectedProducts || selectedProducts.length === 0) {
+      if (!selectedProducts.length) {
         toast.error('Please select at least one product');
         return;
       }
 
       const response = await axios.post(
         `${backendUrl}/api/product/remove-discount`,
-        {
-          productIds: selectedProducts
-        },
+        { productIds: selectedProducts },
         { headers: { token } }
       );
 
       if (response.data.success) {
-        // Show which products were updated
-        if (response.data.updatedProducts.length > 0) {
+        if (response.data.updatedProducts.length) {
           const updatedNames = response.data.updatedProducts.map(p => p.name).join(', ');
           toast.success(`Discounts removed from: ${updatedNames}`);
         } else {
           toast.info('No discounted products were selected');
         }
-
-        // Refresh products list
         const updatedProducts = await axios.get(`${backendUrl}/api/product/list`);
-        if (updatedProducts.data.success) {
-          setProducts(updatedProducts.data.products);
-          // Reset selection
-          setSelectedProducts([]);
-          setDiscountRate(0);
-        }
+        setProducts(updatedProducts.data.products);
+        setSelectedProducts([]);
+        setDiscountRate(0);
       } else {
         toast.error(response.data.message || 'Error removing discounts');
       }
@@ -237,14 +219,12 @@ const SalesManager = ({ token }) => {
     }
   };
 
-  // Set new base price
   const handleSetPrice = async () => {
     try {
-      if (!selectedProducts || selectedProducts.length === 0) {
+      if (!selectedProducts.length) {
         toast.error('Please select at least one product');
         return;
       }
-
       if (!newPrice || newPrice <= 0) {
         toast.error('Please enter a valid price');
         return;
@@ -252,20 +232,15 @@ const SalesManager = ({ token }) => {
 
       const response = await axios.post(
         `${backendUrl}/api/product/set-price`,
-        {
-          productIds: selectedProducts,
-          newPrice: parseFloat(newPrice)
-        },
+        { productIds: selectedProducts, newPrice: parseFloat(newPrice) },
         { headers: { token } }
       );
 
       if (response.data.success) {
         toast.success('Price updated successfully');
-        // Refresh products list
         const updatedProducts = await axios.get(`${backendUrl}/api/product/list`);
         if (updatedProducts.data.success) {
           setProducts(updatedProducts.data.products);
-          // Reset selection and price
           setSelectedProducts([]);
           setNewPrice('');
         }
@@ -278,15 +253,14 @@ const SalesManager = ({ token }) => {
     }
   };
 
-  // Fetch invoices
+  // ----------------------------------------------------
+  // 2) INVOICE MANAGEMENT
+  // ----------------------------------------------------
   const handleFetchInvoices = async () => {
     try {
       const response = await axios.post(
         `${backendUrl}/api/order/invoices`,
-        {
-          startDate,
-          endDate
-        },
+        { startDate, endDate },
         { headers: { token } }
       );
       if (response.data.success) {
@@ -297,36 +271,25 @@ const SalesManager = ({ token }) => {
     }
   };
 
-  // Generate PDF
   const handleGeneratePDF = async (orderId) => {
     try {
       const response = await axios.get(
         `${backendUrl}/api/order/invoice/${orderId}`,
         {
-          headers: { 
-            token,
-            'Accept': 'application/pdf'
-          },
+          headers: { token, Accept: 'application/pdf' },
           responseType: 'blob'
         }
       );
 
-      // Create blob link to download
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `invoice-${orderId}.pdf`);
-      
-      // Append to html link element page
       document.body.appendChild(link);
-      
-      // Start download
       link.click();
-      
-      // Clean up and remove the link
-      link.parentNode.removeChild(link);
+      link.remove();
       window.URL.revokeObjectURL(url);
-      
+
       toast.success('PDF generated successfully');
     } catch (error) {
       console.error('PDF generation error:', error);
@@ -334,33 +297,25 @@ const SalesManager = ({ token }) => {
     }
   };
 
-  // Fetch financial data
+  // ----------------------------------------------------
+  // 3) FINANCIAL ANALYTICS
+  // ----------------------------------------------------
   const handleFetchFinancialData = async () => {
     try {
       if (!startDate || !endDate) {
         toast.error('Please select both start and end dates');
         return;
       }
-
-      console.log('Fetching financial data for:', { startDate, endDate });
-      
       const response = await axios.post(
         `${backendUrl}/api/order/analytics/revenue`,
-        {
-          startDate,
-          endDate
-        },
+        { startDate, endDate },
         { headers: { token } }
       );
-
-      console.log('Financial data response:', response.data);
-
       if (response.data.success) {
         if (response.data.dates.length === 0) {
           toast.info('No financial data found for the selected date range');
           return;
         }
-
         setRevenueData({
           dates: response.data.dates,
           revenue: response.data.revenue,
@@ -377,29 +332,81 @@ const SalesManager = ({ token }) => {
     }
   };
 
+  // ----------------------------------------------------
+  // 4) RETURN/REFUND MANAGEMENT
+  // ----------------------------------------------------
+  const handleFetchReturns = async () => {
+    try {
+      // GET /api/order/returns?status=pending
+      const response = await axios.get(`${backendUrl}/api/order/returns?status=pending`, {
+        headers: { token }
+      });
+      if (response.data.success) {
+        setReturns(response.data.returns);
+      } else {
+        toast.error(response.data.message || 'Failed to fetch return requests');
+      }
+    } catch (error) {
+      console.error('Fetch returns error:', error);
+      toast.error(error.response?.data?.message || 'Error fetching returns');
+    }
+  };
+
+  // Approve or Decline the return
+  const handleUpdateReturnStatus = async (orderId, newStatus) => {
+    try {
+      // PATCH /api/order/return/:orderId
+      // Body: { status: 'approved' | 'rejected' }
+      const response = await axios.patch(
+        `${backendUrl}/api/order/return/${orderId}`,
+        { status: newStatus },
+        { headers: { token } }
+      );
+      if (response.data.success) {
+        toast.success(`Return status updated to '${newStatus}'`);
+        handleFetchReturns(); // Refresh the list to see updated statuses
+      } else {
+        toast.error(response.data.message || 'Failed to update return status');
+      }
+    } catch (error) {
+      console.error('Update return status error:', error);
+      toast.error(error.response?.data?.message || 'Error updating return status');
+    }
+  };
+
   return (
     <div className="p-4">
-      {/* Discount Management Section */}
+      {/* DISCOUNT MANAGEMENT SECTION */}
       <div className="mb-8">
         <h2 className="text-2xl font-bold mb-4">Discount Management</h2>
         <div className="flex gap-4 mb-4">
           <select
             multiple
             className="border p-2 rounded w-96"
-            onChange={(e) => setSelectedProducts(Array.from(e.target.selectedOptions, option => option.value))}
+            onChange={(e) =>
+              setSelectedProducts(Array.from(e.target.selectedOptions, option => option.value))
+            }
             value={selectedProducts}
           >
             {products.map(product => (
-              <option 
-                key={product._id} 
+              <option
+                key={product._id}
                 value={product._id}
                 className={product.discountRate ? 'text-red-600' : ''}
               >
-                {product.name} - 
+                {product.name} -
                 {product.discountRate ? (
-                  <>Original: {currency}{product.originalPrice?.toFixed(2)} | Discounted: {currency}{product.price?.toFixed(2)} ({product.discountRate}% off)</>
+                  <>
+                    Original: {currency}
+                    {product.originalPrice?.toFixed(2)} | Discounted:{' '}
+                    {currency}
+                    {product.price?.toFixed(2)} ({product.discountRate}% off)
+                  </>
                 ) : (
-                  <>Price: {currency}{product.price?.toFixed(2)}</>
+                  <>
+                    Price: {currency}
+                    {product.price?.toFixed(2)}
+                  </>
                 )}
               </option>
             ))}
@@ -447,7 +454,7 @@ const SalesManager = ({ token }) => {
         </div>
       </div>
 
-      {/* Invoice Management Section */}
+      {/* INVOICE MANAGEMENT SECTION */}
       <div className="mb-8">
         <h2 className="text-2xl font-bold mb-4">Invoice Management</h2>
         <div className="flex gap-4 mb-4">
@@ -472,7 +479,10 @@ const SalesManager = ({ token }) => {
         </div>
         <div className="mt-4">
           {invoices.map(invoice => (
-            <div key={invoice._id} className="border p-4 rounded mb-2 flex justify-between items-center hover:bg-gray-50 transition-colors">
+            <div
+              key={invoice._id}
+              className="border p-4 rounded mb-2 flex justify-between items-center hover:bg-gray-50 transition-colors"
+            >
               <div>
                 <p>Order ID: {invoice.orderId}</p>
                 <p>Date: {new Date(invoice.date).toLocaleDateString()}</p>
@@ -489,8 +499,8 @@ const SalesManager = ({ token }) => {
         </div>
       </div>
 
-      {/* Financial Analytics Section */}
-      <div>
+      {/* FINANCIAL ANALYTICS SECTION */}
+      <div className="mb-8">
         <h2 className="text-2xl font-bold mb-4">Financial Analytics</h2>
         <div className="flex gap-4 mb-4">
           <input
@@ -512,24 +522,73 @@ const SalesManager = ({ token }) => {
             Generate Report
           </button>
         </div>
-        <div className="mt-4">
-          <div className="bg-white p-4 rounded-lg shadow-lg">
-            <div className="h-[400px]">
-              <Line data={chartData} options={chartOptions} />
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              {revenueData.dates.map((date, index) => (
-                <div key={date} className="border p-4 rounded bg-gray-50">
-                  <p className="font-semibold">Date: {new Date(date).toLocaleDateString()}</p>
-                  <p className="text-lg text-green-600">Revenue: {currency}{revenueData.revenue[index]}</p>
-                </div>
-              ))}
-            </div>
+        <div className="bg-white p-4 rounded-lg shadow-lg">
+          <div className="h-[400px]">
+            <Line data={chartData} options={chartOptions} />
           </div>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            {revenueData.dates.map((date, index) => (
+              <div key={date} className="border p-4 rounded bg-gray-50">
+                <p className="font-semibold">
+                  Date: {new Date(date).toLocaleDateString()}
+                </p>
+                <p className="text-lg text-green-600">
+                  Revenue: {currency}{revenueData.revenue[index]}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* RETURN / REFUND MANAGEMENT SECTION */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold mb-4">Return / Refund Management</h2>
+        <div className="flex gap-4 mb-4">
+          <button
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+            onClick={handleFetchReturns}
+          >
+            Fetch Pending Returns
+          </button>
+        </div>
+        <div>
+          {returns.map((ret) => (
+            <div key={ret._id} className="border p-4 rounded mb-2">
+              <p className="font-semibold mb-1">Return ID: {ret._id}</p>
+              <p>Order ID: {ret.orderId || (ret.order && ret.order._id)}</p>
+              <p>User: {ret.user && ret.user.email}</p>
+              {/* 
+                Note: Display the actual returnStatus.
+                If your backend is still returning ret.status = 'Delivered', 
+                you won't see "pending" here. So use ret.returnStatus if possible.
+              */}
+              <p>Status: {ret.returnStatus || 'unknown'}</p>
+              <p>Refund Amount: {currency}{ret.refundAmount}</p>
+
+              {/* Show Approve/Decline if returnStatus === 'pending' */}
+              {ret.returnStatus === 'pending' && (
+                <div className="flex gap-3 mt-3">
+                  <button
+                    onClick={() => handleUpdateReturnStatus(ret._id, 'approved')}
+                    className="bg-blue-500 text-white px-3 py-1 rounded"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleUpdateReturnStatus(ret._id, 'rejected')}
+                    className="bg-red-500 text-white px-3 py-1 rounded"
+                  >
+                    Decline
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 };
 
-export default SalesManager; 
+export default SalesManager;
