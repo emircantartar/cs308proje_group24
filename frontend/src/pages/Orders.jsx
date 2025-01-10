@@ -99,13 +99,25 @@ const Orders = () => {
         }
       );
 
-      const url = window.URL.createObjectURL(
-        new Blob([response.data], { type: 'application/pdf' })
-      );
-      window.open(url, '_blank');
+      // Create a blob from the PDF stream
+      const file = new Blob([response.data], { type: 'application/pdf' });
+      
+      // Create a link and trigger download
+      const fileURL = window.URL.createObjectURL(file);
+      const link = document.createElement('a');
+      link.href = fileURL;
+      link.download = `invoice_${orderId}.pdf`;
+      link.click();
+
+      // Clean up
+      window.URL.revokeObjectURL(fileURL);
     } catch (error) {
-      console.error('Error viewing invoice:', error);
-      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+      console.error('Error downloading invoice:', error);
+      if (error.response?.status === 403) {
+        alert('You are not authorized to download this invoice.');
+      } else if (error.response?.status === 404) {
+        alert('Invoice not found.');
+      } else if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
         alert('Error downloading invoice. Please try again.');
       }
     }

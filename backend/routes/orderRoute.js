@@ -27,7 +27,7 @@ orderRouter.post('/list', adminAuth, allOrders);
 orderRouter.post('/status', adminAuth, updateStatus);
 orderRouter.post('/place', authUser, placeOrder);
 orderRouter.post('/userorders', authUser, userOrders);
-orderRouter.get('/invoice/:orderId', adminAuth, downloadInvoice);
+orderRouter.get('/invoice/:orderId', authUser, downloadInvoice);
 orderRouter.post('/invoice/email', adminAuth, sendInvoiceEmail);
 orderRouter.post('/invoices', adminAuth, getInvoices);
 orderRouter.post('/analytics/revenue', adminAuth, calculateFinancials);

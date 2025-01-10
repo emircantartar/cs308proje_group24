@@ -15,7 +15,7 @@ const generatePDF = async (order) => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument();
-      const invoicesDir = path.join(process.cwd(), 'invoices');
+      const invoicesDir = path.join(process.cwd(), 'backend', 'invoices');
       const filePath = path.join(invoicesDir, `invoice_${order._id}.pdf`);
 
       // Ensure invoices directory exists
@@ -188,7 +188,7 @@ const generatePDF = async (order) => {
 export const requestReturn = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const userId = req.body.userId; // set by auth middleware
+    const userId = req.user._id;  // Get userId from auth middleware
 
     const order = await orderModel.findById(orderId);
     if (!order) {
@@ -303,6 +303,11 @@ export const downloadInvoice = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
+    // Check if user is authorized to access this order
+    if (String(order.userId) !== String(req.user._id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized to access this order' });
+    }
+
     console.log('Generating PDF for order:', orderId);
     const pdfPath = await generatePDF(order);
     console.log('PDF generated at:', pdfPath);
@@ -316,8 +321,8 @@ export const downloadInvoice = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=invoice_${orderId}.pdf`);
 
     const fileStream = fs.createReadStream(pdfPath);
-    fileStream.pipe(res);
-
+    
+    // Handle file stream errors
     fileStream.on('error', (error) => {
       console.error('File stream error:', error);
       if (!res.headersSent) {
@@ -325,11 +330,18 @@ export const downloadInvoice = async (req, res) => {
       }
     });
 
-    // Optional: remove the file after streaming
-    // fileStream.on('end', () => {
-    //   fs.unlinkSync(pdfPath);
-    // });
-    
+    // Clean up the file after sending
+    fileStream.on('end', () => {
+      try {
+        fs.unlinkSync(pdfPath);
+      } catch (error) {
+        console.error('Error cleaning up PDF file:', error);
+      }
+    });
+
+    // Pipe the file to the response
+    fileStream.pipe(res);
+
   } catch (error) {
     console.error('PDF generation/download error:', error);
     if (!res.headersSent) {
