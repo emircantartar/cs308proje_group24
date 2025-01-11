@@ -8,6 +8,7 @@ import {
   removeDiscount, 
   setPrice, 
   updateStock,
+  updateStockReturn,
   getCategories,
   addCategory,
   updateCategory,
@@ -28,6 +29,7 @@ productRouter.post('/discount/notify',adminAuth,applyDiscount);
 productRouter.post('/remove-discount',adminAuth,removeDiscount);
 productRouter.post('/set-price',adminAuth,setPrice);
 productRouter.post('/update-stock',adminAuth,updateStock);
+productRouter.post('/update-stock-return',adminAuth,updateStockReturn);
 
 // Category management routes
 productRouter.get('/categories', getCategories);

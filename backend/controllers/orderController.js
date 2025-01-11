@@ -244,8 +244,8 @@ export const updateReturnStatus = async (req, res) => {
 
     order.returnStatus = status;
 
-    // Only handle inventory if it's a refund
-    if (status === 'refunded') {
+    // Update inventory when return is approved
+    if (status === 'approved') {
       for (const item of order.items) {
         const product = await productModel.findById(item._id);
         if (product) {

@@ -343,39 +343,8 @@ const setPrice = async (req, res) => {
     }
 };
 
-// Update product stock
-export const updateStock = async (req, res) => {
-  try {
-    const { productId, quantity } = req.body;
-    
-    // Validate quantity
-    if (quantity < 0) {
-      return res.json({ success: false, message: "Quantity cannot be negative" });
-    }
-
-    const product = await productModel.findByIdAndUpdate(
-      productId,
-      { quantity: Number(quantity) },
-      { new: true }
-    );
-
-    if (!product) {
-      return res.json({ success: false, message: "Product not found" });
-    }
-
-    res.json({ 
-      success: true, 
-      message: "Stock updated successfully",
-      product 
-    });
-  } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
-  }
-};
-
 // Get all categories
-export const getCategories = async (req, res) => {
+const getCategories = async (req, res) => {
   try {
     // Use aggregation to get unique categories and their product counts
     const categories = await productModel.aggregate([
@@ -426,7 +395,7 @@ export const getCategories = async (req, res) => {
 };
 
 // Add new category
-export const addCategory = async (req, res) => {
+const addCategory = async (req, res) => {
   try {
     const { category, subCategories } = req.body;
     
@@ -506,7 +475,7 @@ export const addCategory = async (req, res) => {
 };
 
 // Update category
-export const updateCategory = async (req, res) => {
+const updateCategory = async (req, res) => {
   try {
     const { oldCategory, newCategory, subCategories } = req.body;
     
@@ -625,7 +594,7 @@ export const updateCategory = async (req, res) => {
 };
 
 // Delete category and all its products
-export const deleteCategory = async (req, res) => {
+const deleteCategory = async (req, res) => {
   try {
     const { category } = req.body;
     
@@ -655,7 +624,7 @@ export const deleteCategory = async (req, res) => {
 };
 
 // Update product category
-export const updateProductCategory = async (req, res) => {
+const updateProductCategory = async (req, res) => {
   try {
     const { productId, category, subCategory } = req.body;
     
@@ -688,4 +657,80 @@ export const updateProductCategory = async (req, res) => {
   }
 };
 
-export { addProduct, listProducts, removeProduct, singleProduct, applyDiscount, removeDiscount, setPrice };
+// Function to update stock when a return is approved
+const updateStockReturn = async (req, res) => {
+  try {
+    const { productId, returnedQuantity } = req.body;
+
+    // Find the product
+    const product = await productModel.findById(productId);
+    if (!product) {
+      return res.json({ success: false, message: "Product not found" });
+    }
+
+    // Update the stock by adding back the returned quantity
+    const updatedQuantity = (product.quantity || 0) + Number(returnedQuantity);
+    
+    // Update the product with new quantity
+    await productModel.findByIdAndUpdate(productId, {
+      quantity: updatedQuantity
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Stock updated successfully",
+      newQuantity: updatedQuantity
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// Update product stock
+const updateStock = async (req, res) => {
+  try {
+    const { productId, quantity } = req.body;
+    
+    // Validate quantity
+    if (quantity < 0) {
+      return res.json({ success: false, message: "Quantity cannot be negative" });
+    }
+
+    const product = await productModel.findByIdAndUpdate(
+      productId,
+      { quantity: Number(quantity) },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.json({ success: false, message: "Product not found" });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Stock updated successfully",
+      product 
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export {
+  addProduct,
+  listProducts,
+  removeProduct,
+  singleProduct,
+  applyDiscount,
+  removeDiscount,
+  setPrice,
+  updateStock,
+  getCategories,
+  addCategory,
+  updateCategory,
+  deleteCategory,
+  updateProductCategory,
+  updateStockReturn
+};

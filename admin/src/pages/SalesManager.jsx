@@ -377,6 +377,40 @@ const SalesManager = ({ token }) => {
       );
       if (response.data.success) {
         toast.success(`Return status updated to '${newStatus}'`);
+        
+        // If return is approved, update the product stock
+        if (newStatus === 'approved') {
+          try {
+            // Get the return details to find the product and quantity
+            const returnResponse = await axios.get(
+              `${backendUrl}/api/order/return/${orderId}`,
+              { headers: { token } }
+            );
+            
+            if (returnResponse.data.success && returnResponse.data.order) {
+              const orderData = returnResponse.data.order;
+              // Update stock for each item in the order
+              for (const item of orderData.items) {
+                const stockResponse = await axios.post(
+                  `${backendUrl}/api/product/update-stock-return`,
+                  {
+                    productId: item._id,
+                    returnedQuantity: item.quantity
+                  },
+                  { headers: { token } }
+                );
+
+                if (stockResponse.data.success) {
+                  toast.success('Product stock updated successfully');
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error updating stock:', error);
+            toast.error('Error updating product stock');
+          }
+        }
+
         handleFetchReturns(); // Refresh the list to see updated statuses
       } else {
         toast.error(response.data.message || 'Failed to update return status');
@@ -608,20 +642,22 @@ const SalesManager = ({ token }) => {
                 <p>Refund Amount: {currency}{Number(ret.refundAmount).toFixed(2)}</p>
               )}
 
-              {/* Status management slider */}
-              <div className="mt-3">
-                <select
-                  value={ret.returnStatus}
-                  onChange={(e) => {
-                    const newStatus = e.target.value;
-                    handleUpdateReturnStatus(ret._id, newStatus);
-                  }}
-                  className="p-2 rounded border bg-white"
-                  disabled={ret.returnStatus === 'refunded'}
+              {/* Status management buttons */}
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => handleUpdateReturnStatus(ret._id, 'approved')}
+                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
+                  disabled={ret.returnStatus === 'refunded' || ret.returnStatus === 'approved'}
                 >
-                  <option value="approved">Return Approved</option>
-                  <option value="rejected">Return Rejected</option>
-                </select>
+                  Approve Return
+                </button>
+                <button
+                  onClick={() => handleUpdateReturnStatus(ret._id, 'rejected')}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+                  disabled={ret.returnStatus === 'refunded' || ret.returnStatus === 'rejected'}
+                >
+                  Reject Return
+                </button>
               </div>
 
               {/* Show refund processed status only when refund is processed */}
