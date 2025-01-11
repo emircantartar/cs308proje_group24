@@ -228,7 +228,7 @@ export const requestReturn = async (req, res) => {
 export const updateReturnStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status } = req.body; // 'approved', 'rejected', or 'refunded'
+    const { status } = req.body;
 
     const order = await orderModel.findById(orderId);
     if (!order) {
@@ -244,8 +244,8 @@ export const updateReturnStatus = async (req, res) => {
 
     order.returnStatus = status;
 
-    // If approved/refunded => put items back
-    if (status === 'approved' || status === 'refunded') {
+    // Only handle inventory if it's a refund
+    if (status === 'refunded') {
       for (const item of order.items) {
         const product = await productModel.findById(item._id);
         if (product) {
@@ -253,11 +253,6 @@ export const updateReturnStatus = async (req, res) => {
           await product.save();
         }
       }
-    }
-
-    // If 'refunded', handle payment gateway or credit
-    if (status === 'refunded') {
-      // e.g., console.log(`Issuing refund of $${order.refundAmount}...`);
     }
 
     await order.save();

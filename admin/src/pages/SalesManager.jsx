@@ -349,8 +349,8 @@ const SalesManager = ({ token }) => {
   // ----------------------------------------------------
   const handleFetchReturns = async () => {
     try {
-      // GET /api/order/returns?status=pending
-      const response = await axios.get(`${backendUrl}/api/order/returns?status=pending`, {
+      // Remove the status filter to get all returns
+      const response = await axios.get(`${backendUrl}/api/order/returns`, {
         headers: { token }
       });
       if (response.data.success) {
@@ -367,11 +367,12 @@ const SalesManager = ({ token }) => {
   // Approve or Decline the return
   const handleUpdateReturnStatus = async (orderId, newStatus) => {
     try {
-      // PATCH /api/order/return/:orderId
-      // Body: { status: 'approved' | 'rejected' }
       const response = await axios.patch(
         `${backendUrl}/api/order/return/${orderId}`,
-        { status: newStatus },
+        { 
+          status: newStatus,
+          skipRefund: true // Add this flag to prevent automatic refund
+        },
         { headers: { token } }
       );
       if (response.data.success) {
@@ -383,6 +384,31 @@ const SalesManager = ({ token }) => {
     } catch (error) {
       console.error('Update return status error:', error);
       toast.error(error.response?.data?.message || 'Error updating return status');
+    }
+  };
+
+  // Handle refund separately
+  const handleRefund = async (returnId, amount) => {
+    try {
+      const response = await axios.post(
+        `${backendUrl}/api/order/refund`,
+        { 
+          returnId,
+          refundAmount: amount 
+        },
+        { headers: { token } }
+      );
+      if (response.data.success) {
+        toast.success('Refund processed successfully');
+        // Update the return status to refunded
+        await handleUpdateReturnStatus(returnId, 'refunded');
+        handleFetchReturns(); // Refresh returns list
+      } else {
+        toast.error(response.data.message || 'Failed to process refund');
+      }
+    } catch (error) {
+      console.error('Refund error:', error);
+      toast.error(error.response?.data?.message || 'Error processing refund');
     }
   };
 
@@ -498,6 +524,8 @@ const SalesManager = ({ token }) => {
               <div>
                 <p>Order ID: {invoice.orderId}</p>
                 <p>Date: {new Date(invoice.date).toLocaleDateString()}</p>
+                <p>Subtotal: {currency}{Number(invoice.total - 10).toFixed(2)}</p>
+                <p>Shipping: {currency}10.00</p>
                 <p>Total: {currency}{Number(invoice.total).toFixed(2)}</p>
               </div>
               <button
@@ -561,7 +589,7 @@ const SalesManager = ({ token }) => {
             className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
             onClick={handleFetchReturns}
           >
-            Fetch Pending Returns
+            Fetch All Returns
           </button>
         </div>
         <div>
@@ -570,25 +598,37 @@ const SalesManager = ({ token }) => {
               <p className="font-semibold mb-1">Return ID: {ret._id}</p>
               <p>Order ID: {ret.orderId || (ret.order && ret.order._id)}</p>
               <p>User: {ret.user && ret.user.email}</p>
-              <p>Status: {ret.returnStatus || 'unknown'}</p>
-              <p>Refund Amount: {currency}{Number(ret.refundAmount).toFixed(2)}</p>
+              <p>Status: <span className={
+                ret.returnStatus === 'approved' ? 'text-green-600' :
+                ret.returnStatus === 'rejected' ? 'text-red-600' :
+                ret.returnStatus === 'refunded' ? 'text-green-600' :
+                'text-blue-600'
+              }>{ret.returnStatus || 'unknown'}</span></p>
+              {ret.refundAmount && (
+                <p>Refund Amount: {currency}{Number(ret.refundAmount).toFixed(2)}</p>
+              )}
 
-              {/* Show Approve/Decline if returnStatus === 'pending' */}
-              {ret.returnStatus === 'pending' && (
-                <div className="flex gap-3 mt-3">
-                  <button
-                    onClick={() => handleUpdateReturnStatus(ret._id, 'approved')}
-                    className="bg-blue-500 text-white px-3 py-1 rounded"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => handleUpdateReturnStatus(ret._id, 'rejected')}
-                    className="bg-red-500 text-white px-3 py-1 rounded"
-                  >
-                    Decline
-                  </button>
-                </div>
+              {/* Status management slider */}
+              <div className="mt-3">
+                <select
+                  value={ret.returnStatus}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+                    handleUpdateReturnStatus(ret._id, newStatus);
+                  }}
+                  className="p-2 rounded border bg-white"
+                  disabled={ret.returnStatus === 'refunded'}
+                >
+                  <option value="approved">Return Approved</option>
+                  <option value="rejected">Return Rejected</option>
+                </select>
+              </div>
+
+              {/* Show refund processed status only when refund is processed */}
+              {ret.returnStatus === 'refunded' && ret.refundAmount && (
+                <p className="mt-2">
+                  <span className="text-green-600 font-medium">✓ Refund Processed</span>
+                </p>
               )}
             </div>
           ))}

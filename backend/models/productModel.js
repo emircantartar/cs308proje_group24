@@ -20,7 +20,7 @@ const productSchema = new mongoose.Schema({
 });
 
 productSchema.pre('save', function(next) {
-    if (this.isNew) {
+    if (this.isNew || !this.originalPrice) {
         this.originalPrice = this.price;
     }
     next();

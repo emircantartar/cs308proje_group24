@@ -37,7 +37,8 @@ const Orders = () => {
             item.paymentMethod = order.paymentMethod;
             item.date = order.date;
             item.orderId = order._id;
-            item.returnStatus = order.returnStatus || 'none'; 
+            item.returnStatus = order.returnStatus || 'none';
+            item.refundAmount = order.refundAmount || null;
             
             // Push into a flat array for easy rendering
             allOrdersItem.push(item);
@@ -241,14 +242,26 @@ const Orders = () => {
 
                   {/* If you want to show other states */}
                   {item.returnStatus === 'approved' && (
-                    <span className="text-green-500 text-sm font-medium">
-                      Return Approved
-                    </span>
+                    <div>
+                      <span className="text-green-500 text-sm font-medium">
+                        Return Approved
+                      </span>
+                      {item.refundAmount && (
+                        <p className="text-green-500 text-sm font-medium mt-1">
+                          Refunded: {currency}{Number(item.refundAmount).toFixed(2)}
+                        </p>
+                      )}
+                    </div>
                   )}
                   {item.returnStatus === 'refunded' && (
-                    <span className="text-green-500 text-sm font-medium">
-                      Refunded
-                    </span>
+                    <div>
+                      <span className="text-green-500 text-sm font-medium">
+                        Refunded
+                      </span>
+                      <p className="text-green-500 text-sm font-medium mt-1">
+                        Amount: {currency}{Number(item.refundAmount).toFixed(2)}
+                      </p>
+                    </div>
                   )}
                   {item.returnStatus === 'rejected' && (
                     <span className="text-red-500 text-sm font-medium">

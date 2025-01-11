@@ -7,6 +7,35 @@ import { assets } from '../assets/assets';
 const Orders = ({ token }) => {
   const [orders, setOrders] = useState([]);
 
+  // Handle refund
+  const handleRefund = async (orderId, amount) => {
+    try {
+      const response = await axios.post(
+        `${backendUrl}/api/order/refund`,
+        { 
+          orderId, 
+          refundAmount: amount 
+        },
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
+      if (response.data.success) {
+        toast.success('Refund processed successfully');
+        await fetchAllOrders();
+      } else {
+        toast.error(response.data.message || 'Failed to process refund');
+      }
+    } catch (error) {
+      if (error.response?.status !== 401) {
+        toast.error(error.response?.data?.message || 'Error processing refund');
+      }
+    }
+  };
+
   // Fetch all orders
   const fetchAllOrders = async () => {
     if (!token) return null;
@@ -27,18 +56,17 @@ const Orders = ({ token }) => {
         const processedOrders = response.data.orders.map(order => ({
           ...order,
           amount: order.items.reduce((total, item) => {
-            const itemPrice = item.discountRate ? 
-              (item.originalPrice * (1 - item.discountRate/100)) : 
-              item.price;
-            return total + (itemPrice * item.quantity);
-          }, 0)
+            return total + (item.price * item.quantity);
+          }, 0) + 10,
+          returnStatus: order.returnStatus || 'none',
+          refundAmount: order.refundAmount || null
         }));
         setOrders(processedOrders.reverse());
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
+      if (error.response?.status !== 401) {
         toast.error(error.response?.data?.message || 'Error fetching orders');
       }
     }
@@ -122,18 +150,18 @@ const Orders = ({ token }) => {
                 {order.items.map((item, i) => {
                   const comma = i === order.items.length - 1 ? '' : ',';
                   const discountedPrice = item.discountRate ? 
-                    (item.originalPrice * (1 - item.discountRate/100)) : 
+                    (item.price * (1 - item.discountRate/100)) : 
                     item.price;
                   return (
                     <p className="py-0.5" key={i}>
                       {item.name} x {item.quantity} <span>{item.size}</span>
                       {item.discountRate ? (
                         <span className="text-red-600">
-                          {' '}(Original: {currency}{Number(item.originalPrice).toFixed(2)}, 
-                          Discounted: {currency}{Number(discountedPrice).toFixed(2)})
+                          {' '}(Original: {currency}{parseFloat(item.originalPrice).toFixed(2)}, 
+                          Discounted: {currency}{parseFloat(item.price).toFixed(2)})
                         </span>
                       ) : (
-                        <span> ({currency}{Number(item.price).toFixed(2)})</span>
+                        <span> ({currency}{parseFloat(item.price).toFixed(2)})</span>
                       )}
                       {comma}
                     </p>
@@ -162,7 +190,9 @@ const Orders = ({ token }) => {
 
             {/* Amount */}
             <p className="text-sm sm:text-[15px]">
-              {currency}{parseFloat(order.amount).toFixed(2)}
+              Subtotal: {currency}{parseFloat(order.items.reduce((total, item) => total + (item.price * item.quantity), 0)).toFixed(2)}<br />
+              Shipping: {currency}10.00<br />
+              Total: {currency}{parseFloat(order.amount).toFixed(2)}
             </p>
 
             {/* Shipping Status */}
@@ -177,6 +207,31 @@ const Orders = ({ token }) => {
               <option value="Out for delivery">Out for delivery</option>
               <option value="Delivered">Delivered</option>
             </select>
+
+            {/* Return and Refund Status */}
+            <div className="mt-2">
+              {order.returnStatus && (
+                <div className="text-sm">
+                  <p>Return Status: <span className={
+                    order.returnStatus === 'approved' ? 'text-green-600' :
+                    order.returnStatus === 'rejected' ? 'text-red-600' :
+                    order.returnStatus === 'refunded' ? 'text-green-600' :
+                    'text-blue-600'
+                  }>{order.returnStatus}</span></p>
+                  
+                  {order.refundAmount ? (
+                    <p className="mt-1">Refunded Amount: {currency}{parseFloat(order.refundAmount).toFixed(2)}</p>
+                  ) : order.returnStatus === 'approved' && (
+                    <button
+                      onClick={() => handleRefund(order._id, order.items.reduce((total, item) => total + (item.price * item.quantity), 0) + 10)}
+                      className="mt-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                    >
+                      Process Refund
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Download Invoice Button */}
             <button

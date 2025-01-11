@@ -319,18 +319,16 @@ const setPrice = async (req, res) => {
             // Update the product with new base price
             await productModel.findByIdAndUpdate(product._id, {
                 price: newPrice,
-                originalPrice: newPrice,  // Update original price too
+                originalPrice: newPrice,  // Set new original price
                 $unset: { discountRate: "" }  // Remove any existing discount
             });
             
             updatedProducts.push({
                 id: product._id,
                 name: product.name,
-                oldPrice: product.price,
+                oldPrice: product.originalPrice || product.price,
                 newPrice: newPrice
             });
-            
-            console.log(`Product ${product.name}: Old Price = ${product.price}, New Price = ${newPrice}`);
         }
         
         res.json({
