@@ -273,7 +273,7 @@ const ProductManager = ({ token }) => {
                   <p>Customer ID: {delivery.customerId}</p>
                   <p>Product ID: {delivery.productId}</p>
                   <p>Quantity: {delivery.quantity}</p>
-                  <p>Total Price: {currency}{delivery.totalPrice}</p>
+                  <p>Total Price: {currency}{Number(delivery.totalPrice).toFixed(2)}</p>
                   <p>Address: {delivery.deliveryAddress}</p>
                 </div>
                 <div className="flex gap-2">

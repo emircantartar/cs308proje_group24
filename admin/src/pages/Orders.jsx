@@ -28,7 +28,7 @@ const Orders = ({ token }) => {
           ...order,
           amount: order.items.reduce((total, item) => {
             const itemPrice = item.discountRate ? 
-              (item.price * (1 - item.discountRate/100)) : 
+              (item.originalPrice * (1 - item.discountRate/100)) : 
               item.price;
             return total + (itemPrice * item.quantity);
           }, 0)
@@ -122,18 +122,18 @@ const Orders = ({ token }) => {
                 {order.items.map((item, i) => {
                   const comma = i === order.items.length - 1 ? '' : ',';
                   const discountedPrice = item.discountRate ? 
-                    (item.price * (1 - item.discountRate/100)) : 
+                    (item.originalPrice * (1 - item.discountRate/100)) : 
                     item.price;
                   return (
                     <p className="py-0.5" key={i}>
                       {item.name} x {item.quantity} <span>{item.size}</span>
                       {item.discountRate ? (
                         <span className="text-red-600">
-                          {' '}(Original: {currency}{parseFloat(item.price).toFixed(2)}, 
-                          Discounted: {currency}{parseFloat(discountedPrice).toFixed(2)})
+                          {' '}(Original: {currency}{Number(item.originalPrice).toFixed(2)}, 
+                          Discounted: {currency}{Number(discountedPrice).toFixed(2)})
                         </span>
                       ) : (
-                        <span> ({currency}{parseFloat(item.price).toFixed(2)})</span>
+                        <span> ({currency}{Number(item.price).toFixed(2)})</span>
                       )}
                       {comma}
                     </p>

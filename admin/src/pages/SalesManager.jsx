@@ -410,14 +410,14 @@ const SalesManager = ({ token }) => {
                 {product.discountRate ? (
                   <>
                     Original: {currency}
-                    {product.originalPrice?.toFixed(2)} | Discounted:{' '}
+                    {Number(product.originalPrice).toFixed(2)} | Discounted:{' '}
                     {currency}
-                    {product.price?.toFixed(2)} ({product.discountRate}% off)
+                    {Number(product.price).toFixed(2)} ({product.discountRate}% off)
                   </>
                 ) : (
                   <>
                     Price: {currency}
-                    {product.price?.toFixed(2)}
+                    {Number(product.price).toFixed(2)}
                   </>
                 )}
               </option>
@@ -430,7 +430,7 @@ const SalesManager = ({ token }) => {
               step="0.01"
               className="border p-2 rounded w-32"
               placeholder="New Price"
-              value={newPrice}
+              value={Number(newPrice).toFixed(2)}
               onChange={(e) => setNewPrice(e.target.value)}
             />
             <button
@@ -498,7 +498,7 @@ const SalesManager = ({ token }) => {
               <div>
                 <p>Order ID: {invoice.orderId}</p>
                 <p>Date: {new Date(invoice.date).toLocaleDateString()}</p>
-                <p>Total: {currency}{invoice.total}</p>
+                <p>Total: {currency}{Number(invoice.total).toFixed(2)}</p>
               </div>
               <button
                 className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors"
@@ -545,7 +545,7 @@ const SalesManager = ({ token }) => {
                   Date: {new Date(date).toLocaleDateString()}
                 </p>
                 <p className="text-lg text-green-600">
-                  Revenue: {currency}{revenueData.revenue[index]}
+                  Revenue: {currency}{Number(revenueData.revenue[index]).toFixed(2)}
                 </p>
               </div>
             ))}
@@ -570,13 +570,8 @@ const SalesManager = ({ token }) => {
               <p className="font-semibold mb-1">Return ID: {ret._id}</p>
               <p>Order ID: {ret.orderId || (ret.order && ret.order._id)}</p>
               <p>User: {ret.user && ret.user.email}</p>
-              {/* 
-                Note: Display the actual returnStatus.
-                If your backend is still returning ret.status = 'Delivered', 
-                you won't see "pending" here. So use ret.returnStatus if possible.
-              */}
               <p>Status: {ret.returnStatus || 'unknown'}</p>
-              <p>Refund Amount: {currency}{ret.refundAmount}</p>
+              <p>Refund Amount: {currency}{Number(ret.refundAmount).toFixed(2)}</p>
 
               {/* Show Approve/Decline if returnStatus === 'pending' */}
               {ret.returnStatus === 'pending' && (
