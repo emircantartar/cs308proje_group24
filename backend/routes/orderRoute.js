@@ -1,42 +1,39 @@
-import express from 'express';
+import express from "express";
 import {
-  placeOrder,
-  allOrders,
-  userOrders,
-  updateStatus,
-  sendInvoiceEmail,
-  calculateFinancials,
-  getInvoices,
-  downloadInvoice,
-  requestReturn,
-  updateReturnStatus,
-  getReturnRequests
-} from '../controllers/orderController.js';
+    placeOrder,
+    allOrders,
+    userOrders,
+    updateStatus,
+    sendInvoiceEmail,
+    calculateFinancials,
+    getInvoices,
+    downloadInvoice,
+    requestReturn,
+    updateReturnStatus,
+    getReturnRequests,
+    markItemAsReviewed, // NEW
+} from "../controllers/orderController.js";
 
-import adminAuth from '../middleware/adminAuth.js';
-import { authUser, authUserOrAdmin } from '../middleware/auth.js';
+import adminAuth from "../middleware/adminAuth.js";
+import { authUser, authUserOrAdmin } from "../middleware/auth.js";
 
 const orderRouter = express.Router();
 
-// ===================== EXISTING ROUTES =====================
-orderRouter.post('/list', adminAuth, allOrders);
-orderRouter.post('/status', adminAuth, updateStatus);
-orderRouter.post('/place', authUser, placeOrder);
-orderRouter.post('/userorders', authUser, userOrders);
-orderRouter.get('/invoice/:orderId', authUserOrAdmin, downloadInvoice);
-orderRouter.post('/invoice/email', adminAuth, sendInvoiceEmail);
-orderRouter.post('/invoices', adminAuth, getInvoices);
-orderRouter.post('/analytics/revenue', adminAuth, calculateFinancials);
+// Existing Routes
+orderRouter.post("/list", adminAuth, allOrders);
+orderRouter.post("/status", adminAuth, updateStatus);
+orderRouter.post("/place", authUser, placeOrder);
+orderRouter.post("/userorders", authUser, userOrders);
+orderRouter.get("/invoice/:orderId", authUserOrAdmin, downloadInvoice);
+orderRouter.post("/invoice/email", adminAuth, sendInvoiceEmail);
+orderRouter.post("/invoices", adminAuth, getInvoices);
 
-// ===================== NEW ROUTES FOR RETURNS =====================
+// Return Routes
+orderRouter.post("/return/:orderId", authUser, requestReturn);
+orderRouter.patch("/return/:orderId", adminAuth, updateReturnStatus);
+orderRouter.get("/returns", adminAuth, getReturnRequests);
 
-// (A) User requests a return
-orderRouter.post('/return/:orderId', authUser, requestReturn);
-
-// (B) Admin/Manager updates the return status (approved/rejected/refunded)
-orderRouter.patch('/return/:orderId', adminAuth, updateReturnStatus);
-
-// (C) Admin/Manager fetches return requests (e.g. ?status=pending)
-orderRouter.get('/returns', adminAuth, getReturnRequests);
+// NEW: Mark an item as reviewed
+orderRouter.post("/reviewed/:orderId", authUser, markItemAsReviewed);
 
 export default orderRouter;

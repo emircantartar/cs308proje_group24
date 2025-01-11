@@ -10,6 +10,54 @@ import path from "path";
 const currency = "$";
 const deliveryCharge = 10;
 
+
+
+// NEW: Mark an item in an order as reviewed
+export const markItemAsReviewed = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { productId } = req.body;
+        const userId = req.user._id;
+
+        // Find the order
+        const order = await orderModel.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        // Check if the order belongs to the user
+        if (order.userId !== userId) {
+            return res.status(403).json({ success: false, message: "Not authorized to modify this order" });
+        }
+
+        // Check if the order is delivered
+        if (order.status !== "Delivered") {
+            return res.status(400).json({ success: false, message: "Order is not delivered yet" });
+        }
+
+        // Check if the item is in the order
+        const orderedItem = order.items.find((item) => item._id === productId);
+        if (!orderedItem) {
+            return res.status(400).json({ success: false, message: "Product not found in this order" });
+        }
+
+        // Check if the item has already been reviewed
+        if (order.reviewedItems.includes(productId)) {
+            return res.status(400).json({ success: false, message: "This item has already been reviewed" });
+        }
+
+        // Mark the item as reviewed
+        order.reviewedItems.push(productId);
+        await order.save();
+
+        res.json({ success: true, message: "Item marked as reviewed", order });
+    } catch (error) {
+        console.error("Error marking item as reviewed:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
 // Generate PDF invoice
 const generatePDF = async (order) => {
   return new Promise((resolve, reject) => {

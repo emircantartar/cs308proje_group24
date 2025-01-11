@@ -1,20 +1,22 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { ShopContext } from '../context/ShopContext';
-import { assets } from '../assets/assets';
-import RelatedProducts from '../components/RelatedProducts';
+import React, { useContext, useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { ShopContext } from "../context/ShopContext";
+import { assets } from "../assets/assets";
+import RelatedProducts from "../components/RelatedProducts";
 
 const Product = () => {
   const { productId } = useParams();
   const { products, currency, addToCart } = useContext(ShopContext);
 
   const [productData, setProductData] = useState(null);
-  const [image, setImage] = useState('');
-  const [size, setSize] = useState('');
+  const [image, setImage] = useState("");
+  const [size, setSize] = useState("");
+  const [averageRating, setAverageRating] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
 
   // For wishlist feedback
-  const [wishlistMessage, setWishlistMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [wishlistMessage, setWishlistMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Grab this product from the `products` array
   const fetchProductData = async () => {
@@ -22,6 +24,16 @@ const Product = () => {
     if (found) {
       setProductData(found);
       setImage(found.image[0]);
+
+      // Fetch rating information
+      const response = await fetch(`http://localhost:4000/api/product/reviews/${productId}`);
+      const data = await response.json();
+      if (response.ok) {
+        setAverageRating(data.averageRating || 0);
+        setReviewCount(data.reviewCount || 0);
+      } else {
+        console.error("Failed to fetch rating info:", data.message);
+      }
     }
   };
 
@@ -33,35 +45,35 @@ const Product = () => {
   // Handler to add product to wishlist
   const handleAddToWishlist = async () => {
     try {
-      // 1) Grab token from localStorage
-      const token = localStorage.getItem('token');
+      // Grab token from localStorage
+      const token = localStorage.getItem("token");
       if (!token) {
-        setErrorMessage('You must be logged in to add to wishlist.');
+        setErrorMessage("You must be logged in to add to wishlist.");
         return;
       }
 
-      // 2) Call the backend with "Authorization" header
-      const response = await fetch('http://localhost:4000/api/wishlist', {
-        method: 'POST',
+      // Call the backend with "Authorization" header
+      const response = await fetch("http://localhost:4000/api/wishlist", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`, // Correct Authorization header
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ productId }), // Send the product ID
+        body: JSON.stringify({ productId }),
       });
 
       const data = await response.json();
       if (response.ok) {
-        setWishlistMessage('Product added to your wishlist!');
-        setErrorMessage('');
+        setWishlistMessage("Product added to your wishlist!");
+        setErrorMessage("");
       } else {
-        setWishlistMessage('');
-        setErrorMessage(data.message || 'Failed to add to wishlist.');
+        setWishlistMessage("");
+        setErrorMessage(data.message || "Failed to add to wishlist.");
       }
     } catch (error) {
-      console.error('Error adding to wishlist:', error);
-      setWishlistMessage('');
-      setErrorMessage('An error occurred while adding to wishlist.');
+      console.error("Error adding to wishlist:", error);
+      setWishlistMessage("");
+      setErrorMessage("An error occurred while adding to wishlist.");
     }
   };
 
@@ -71,7 +83,7 @@ const Product = () => {
 
   return (
     <div className="border-t-2 pt-10 transition-opacity ease-in duration-500 opacity-100">
-      {/*----------- Wishlist / Error Messages -------------- */}
+      {/* Wishlist / Error Messages */}
       {wishlistMessage && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 mb-4 rounded">
           {wishlistMessage}
@@ -83,9 +95,9 @@ const Product = () => {
         </div>
       )}
 
-      {/*----------- Product Data-------------- */}
+      {/* Product Data */}
       <div className="flex gap-12 sm:gap-12 flex-col sm:flex-row">
-        {/*---------- Product Images------------- */}
+        {/* Product Images */}
         <div className="flex-1 flex flex-col-reverse gap-3 sm:flex-row">
           <div className="flex sm:flex-col overflow-x-auto sm:overflow-y-scroll justify-between sm:justify-normal sm:w-[18.7%] w-full">
             {productData.image.map((item, index) => (
@@ -103,7 +115,7 @@ const Product = () => {
           </div>
         </div>
 
-        {/* -------- Product Info ---------- */}
+        {/* Product Info */}
         <div className="flex-1">
           <h1 className="font-medium text-2xl mt-2">{productData.name}</h1>
           {productData.discountRate > 0 && (
@@ -112,12 +124,18 @@ const Product = () => {
             </div>
           )}
           <div className="flex items-center gap-1 mt-2">
-            <img src={assets.star_icon} alt="" className="w-3.5" />
-            <img src={assets.star_icon} alt="" className="w-3.5" />
-            <img src={assets.star_icon} alt="" className="w-3.5" />
-            <img src={assets.star_icon} alt="" className="w-3.5" />
-            <img src={assets.star_dull_icon} alt="" className="w-3.5" />
-            <p className="pl-2">(122)</p>
+            {/* Dynamically display average rating */}
+            {[...Array(5)].map((_, index) => (
+              <img
+                key={index}
+                src={index < Math.round(averageRating) ? assets.star_icon : assets.star_dull_icon}
+                alt=""
+                className="w-3.5"
+              />
+            ))}
+            <p className="pl-2">
+              ({reviewCount} review{reviewCount === 1 ? "" : "s"})
+            </p>
           </div>
           <div className="mt-5 flex items-center gap-3">
             <p className="text-3xl font-medium">
@@ -173,29 +191,29 @@ const Product = () => {
                 <button
                   onClick={() => setSize(item)}
                   className={`border py-2 px-4 bg-gray-100 ${
-                    item === size ? 'border-orange-500' : ''
+                    item === size ? "border-orange-500" : ""
                   }`}
                   key={index}
-                  disabled={productData.quantity === 0} // Disable size selection if out of stock
+                  disabled={productData.quantity === 0}
                 >
                   {item}
                 </button>
               ))}
             </div>
           </div>
-          {/* --- Buttons Section --- */}
+          {/* Buttons Section */}
           <div className="flex items-center gap-4">
             {/* Add to Cart */}
             <button
               onClick={() => addToCart(productData._id, size)}
               className={`px-8 py-3 text-sm ${
                 productData.quantity === 0
-                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                  : 'bg-black text-white active:bg-gray-700'
+                  ? "bg-gray-400 text-gray-600 cursor-not-allowed"
+                  : "bg-black text-white active:bg-gray-700"
               }`}
               disabled={productData.quantity === 0}
             >
-              {productData.quantity === 0 ? 'Out of Stock' : 'ADD TO CART'}
+              {productData.quantity === 0 ? "Out of Stock" : "ADD TO CART"}
             </button>
 
             {/* Add to Wishlist */}
@@ -216,21 +234,7 @@ const Product = () => {
         </div>
       </div>
 
-      {/* ---------- Description & Review Section ------------- */}
-      <div className="mt-20">
-        <div className="flex">
-          <b className="border px-5 py-3 text-sm">Description</b>
-          <p className="border px-5 py-3 text-sm">Reviews (122)</p>
-        </div>
-        <div className="flex flex-col gap-4 border px-6 py-6 text-sm text-gray-500">
-          <p>
-            An e-commerce website is an online platform that facilitates the
-            buying and selling of products or services over the internet...
-          </p>
-        </div>
-      </div>
-
-      {/* --------- display related products ---------- */}
+      {/* Description & Related Products */}
       <RelatedProducts
         category={productData.category}
         subCategory={productData.subCategory}

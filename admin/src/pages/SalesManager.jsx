@@ -658,6 +658,14 @@ const SalesManager = ({ token }) => {
                 >
                   Reject Return
                 </button>
+                {ret.returnStatus === 'approved' && !ret.refundAmount && (
+                  <button
+                    onClick={() => handleRefund(ret._id, ret.amount)}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                  >
+                    Process Refund
+                  </button>
+                )}
               </div>
 
               {/* Show refund processed status only when refund is processed */}
