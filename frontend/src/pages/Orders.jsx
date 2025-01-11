@@ -176,7 +176,7 @@ const Orders = () => {
                 <div className="flex items-center gap-3 mt-1 text-base text-gray-700">
                   <p>
                     {currency}
-                    {item.price}
+                    {Number(item.price).toFixed(2)}
                   </p>
                   <p>Quantity: {item.quantity}</p>
                   <p>Size: {item.size}</p>

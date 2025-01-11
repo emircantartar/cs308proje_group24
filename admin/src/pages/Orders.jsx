@@ -23,7 +23,17 @@ const Orders = ({ token }) => {
         }
       );
       if (response.data.success) {
-        setOrders(response.data.orders.reverse());
+        console.log('Orders data:', response.data.orders); // Debug log
+        const processedOrders = response.data.orders.map(order => ({
+          ...order,
+          amount: order.items.reduce((total, item) => {
+            const itemPrice = item.discountRate ? 
+              (item.price * (1 - item.discountRate/100)) : 
+              item.price;
+            return total + (itemPrice * item.quantity);
+          }, 0)
+        }));
+        setOrders(processedOrders.reverse());
       } else {
         toast.error(response.data.message);
       }
@@ -111,9 +121,20 @@ const Orders = ({ token }) => {
               <div>
                 {order.items.map((item, i) => {
                   const comma = i === order.items.length - 1 ? '' : ',';
+                  const discountedPrice = item.discountRate ? 
+                    (item.price * (1 - item.discountRate/100)) : 
+                    item.price;
                   return (
                     <p className="py-0.5" key={i}>
                       {item.name} x {item.quantity} <span>{item.size}</span>
+                      {item.discountRate ? (
+                        <span className="text-red-600">
+                          {' '}(Original: {currency}{parseFloat(item.price).toFixed(2)}, 
+                          Discounted: {currency}{parseFloat(discountedPrice).toFixed(2)})
+                        </span>
+                      ) : (
+                        <span> ({currency}{parseFloat(item.price).toFixed(2)})</span>
+                      )}
                       {comma}
                     </p>
                   );
@@ -141,7 +162,7 @@ const Orders = ({ token }) => {
 
             {/* Amount */}
             <p className="text-sm sm:text-[15px]">
-              {currency}{order.amount}
+              {currency}{parseFloat(order.amount).toFixed(2)}
             </p>
 
             {/* Shipping Status */}
