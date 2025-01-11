@@ -367,6 +367,7 @@ const SalesManager = ({ token }) => {
   // Approve or Decline the return
   const handleUpdateReturnStatus = async (orderId, newStatus) => {
     try {
+      // Update the return status
       const response = await axios.patch(
         `${backendUrl}/api/order/return/${orderId}`,
         { 
@@ -375,22 +376,28 @@ const SalesManager = ({ token }) => {
         },
         { headers: { token } }
       );
-      if (response.data.success) {
-        toast.success(`Return status updated to '${newStatus}'`);
-        
-        // If return is approved, update the product stock
-        if (newStatus === 'approved') {
-          try {
-            // Get the return details to find the product and quantity
-            const returnResponse = await axios.get(
-              `${backendUrl}/api/order/return/${orderId}`,
-              { headers: { token } }
-            );
-            
-            if (returnResponse.data.success && returnResponse.data.order) {
-              const orderData = returnResponse.data.order;
-              // Update stock for each item in the order
-              for (const item of orderData.items) {
+      
+      if (!response.data.success) {
+        toast.error(response.data.message || 'Failed to update return status');
+        return;
+      }
+
+      toast.success(`Return status updated to '${newStatus}'`);
+      
+      // If return is approved, update the product stock
+      if (newStatus === 'approved') {
+        try {
+          // Get the return details to find the product and quantity
+          const returnResponse = await axios.get(
+            `${backendUrl}/api/order/return/${orderId}`,
+            { headers: { token } }
+          );
+          
+          if (returnResponse.data.success && returnResponse.data.order) {
+            const orderData = returnResponse.data.order;
+            // Update stock for each item in the order
+            for (const item of orderData.items) {
+              try {
                 const stockResponse = await axios.post(
                   `${backendUrl}/api/product/update-stock-return`,
                   {
@@ -400,24 +407,23 @@ const SalesManager = ({ token }) => {
                   { headers: { token } }
                 );
 
-                if (stockResponse.data.success) {
-                  toast.success('Product stock updated successfully');
+                if (!stockResponse.data.success) {
+                  console.error('Failed to update stock:', stockResponse.data.message);
                 }
+              } catch (error) {
+                console.error('Error updating stock for item:', error);
               }
             }
-          } catch (error) {
-            console.error('Error updating stock:', error);
-            toast.error('Error updating product stock');
           }
+        } catch (error) {
+          console.error('Error processing return details:', error);
         }
-
-        handleFetchReturns(); // Refresh the list to see updated statuses
-      } else {
-        toast.error(response.data.message || 'Failed to update return status');
       }
+
+      handleFetchReturns(); // Refresh the list to see updated statuses
     } catch (error) {
-      console.error('Update return status error:', error);
-      toast.error(error.response?.data?.message || 'Error updating return status');
+      console.error('Error in return status update:', error);
+      toast.error('Failed to process the return. Please try again.');
     }
   };
 
