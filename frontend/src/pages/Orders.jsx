@@ -1,13 +1,13 @@
-// src/pages/Orders.jsx
-import React, { useContext, useEffect, useState } from 'react';
-import { ShopContext } from '../context/ShopContext';
-import Title from '../components/Title';
-import axios from 'axios';
+import React, { useContext, useEffect, useState } from "react";
+import { ShopContext } from "../context/ShopContext";
+import Title from "../components/Title";
+import axios from "axios";
 
 const Orders = () => {
   const { backendUrl, token, currency } = useContext(ShopContext);
 
   const [orderData, setOrderData] = useState([]);
+  const [ratingMessage, setRatingMessage] = useState(""); // Success/error message for rating
 
   // 1) Load order data from the backend
   const loadOrderData = async () => {
@@ -17,11 +17,11 @@ const Orders = () => {
       const response = await axios.post(
         `${backendUrl}/api/order/userorders`,
         {},
-        { 
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -37,9 +37,9 @@ const Orders = () => {
             item.paymentMethod = order.paymentMethod;
             item.date = order.date;
             item.orderId = order._id;
-            item.returnStatus = order.returnStatus || 'none';
+            item.returnStatus = order.returnStatus || "none";
             item.refundAmount = order.refundAmount || null;
-            
+
             // Push into a flat array for easy rendering
             allOrdersItem.push(item);
           });
@@ -49,104 +49,44 @@ const Orders = () => {
         setOrderData(allOrdersItem.sort((a, b) => b.date - a.date));
       }
     } catch (error) {
-      console.error('Error loading orders:', error);
-      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
-        console.error('Error loading orders:', error.response?.data?.message || 'Failed to load orders');
+      console.error("Error loading orders:", error);
+      if (error.response?.status !== 401) {
+        console.error(
+          "Error loading orders:",
+          error.response?.data?.message || "Failed to load orders"
+        );
       }
     }
   };
 
-  // 2) Request return function
-  const requestReturn = async (orderId) => {
+  // 2) Submit Rating
+  const submitRating = async (orderId, productId, rating) => {
     try {
-      if (!token) return alert('Please log in to request a return.');
+      if (!token) return alert("Please log in to submit a rating.");
 
       const response = await axios.post(
-        `${backendUrl}/api/order/return/${orderId}`,
-        {},
-        { 
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
-        }
-      );
-
-      if (response.data.success) {
-        alert('Return request submitted successfully.');
-        loadOrderData();
-      } else {
-        alert(response.data.message || 'Failed to request return.');
-      }
-    } catch (error) {
-      console.error('requestReturn error:', error);
-      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
-        alert(error.response?.data?.message || 'Error requesting return. Please try again.');
-      }
-    }
-  };
-
-  // 3) Download invoice
-  const downloadInvoice = async (orderId) => {
-    try {
-      const response = await axios.get(
-        `${backendUrl}/api/order/invoice/${orderId}`, 
+        `${backendUrl}/api/order/reviewed/${orderId}`,
+        { productId, rating },
         {
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/pdf'
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
-          responseType: 'blob'
-        }
-      );
-
-      // Create a blob from the PDF stream
-      const file = new Blob([response.data], { type: 'application/pdf' });
-      
-      // Create a link and trigger download
-      const fileURL = window.URL.createObjectURL(file);
-      const link = document.createElement('a');
-      link.href = fileURL;
-      link.download = `invoice_${orderId}.pdf`;
-      link.click();
-
-      // Clean up
-      window.URL.revokeObjectURL(fileURL);
-    } catch (error) {
-      console.error('Error downloading invoice:', error);
-      if (error.response?.status === 403) {
-        alert('You are not authorized to download this invoice.');
-      } else if (error.response?.status === 404) {
-        alert('Invoice not found.');
-      } else if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
-        alert('Error downloading invoice. Please try again.');
-      }
-    }
-  };
-
-  // 4) Send invoice by email
-  const sendInvoice = async (orderId, email) => {
-    try {
-      const response = await axios.post(
-        `${backendUrl}/api/order/invoice/email`,
-        { orderId, email },
-        { 
-          headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
         }
       );
 
       if (response.data.success) {
-        alert('Invoice emailed successfully!');
+        setRatingMessage("Rating submitted successfully!");
+        loadOrderData(); // Reload order data to reflect the changes
       } else {
-        alert(response.data.message || 'Failed to email invoice.');
+        setRatingMessage(response.data.message || "Failed to submit rating.");
       }
     } catch (error) {
-      console.error('Error sending invoice:', error);
-      if (error.response?.status !== 401) {  // Don't show error for 401 as it's handled by interceptor
-        alert(error.response?.data?.message || 'Error sending invoice. Please try again.');
+      console.error("Error submitting rating:", error);
+      if (error.response?.status !== 401) {
+        setRatingMessage(
+          error.response?.data?.message || "Error submitting rating. Please try again."
+        );
       }
     }
   };
@@ -158,8 +98,15 @@ const Orders = () => {
   return (
     <div className="border-t pt-16">
       <div className="text-2xl">
-        <Title text1={'MY'} text2={'ORDERS'} />
+        <Title text1={"MY"} text2={"ORDERS"} />
       </div>
+
+      {/* Rating Message */}
+      {ratingMessage && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 mb-4 rounded">
+          {ratingMessage}
+        </div>
+      )}
 
       <div>
         {orderData.map((item, index) => (
@@ -183,91 +130,73 @@ const Orders = () => {
                   <p>Size: {item.size}</p>
                 </div>
                 <p className="mt-1">
-                  Date:{' '}
+                  Date:{" "}
                   <span className="text-gray-400">
                     {new Date(item.date).toDateString()}
                   </span>
                 </p>
                 <p className="mt-1">
-                  Payment:{' '}
+                  Payment:{" "}
                   <span className="text-gray-400">{item.paymentMethod}</span>
                 </p>
               </div>
             </div>
 
-            {/* Right side: Status and Actions */}
+            {/* Right side: Status, Actions, and Rating */}
             <div className="md:w-1/2 flex flex-col md:flex-row justify-between items-center gap-3">
               {/* Order status display */}
               <div className="flex items-center gap-2">
                 <p
                   className={`min-w-2 h-2 rounded-full ${
-                    item.status === 'Delivered' ? 'bg-green-500' : 'bg-gray-500'
+                    item.status === "Delivered" ? "bg-green-500" : "bg-gray-500"
                   }`}
                 ></p>
                 <p className="text-sm md:text-base">{item.status}</p>
               </div>
 
               {/* If delivered, show invoice buttons + return logic */}
-              {item.status === 'Delivered' && (
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => downloadInvoice(item.orderId)}
-                    className="border px-4 py-2 text-sm font-medium rounded-sm"
-                  >
-                    View Invoice
-                  </button>
-                  <button
-                    onClick={() => sendInvoice(item.orderId, item.email)}
-                    className="border px-4 py-2 text-sm font-medium rounded-sm"
-                  >
-                    Email Invoice
-                  </button>
-
-                  {/* Conditionally show "Request Return" or "Return Status" */}
-                  {item.returnStatus === 'none' && (
+              {item.status === "Delivered" && (
+                <div className="flex flex-col gap-3 items-start">
+                  <div className="flex gap-3">
                     <button
-                      onClick={() => requestReturn(item.orderId)}
+                      onClick={() => downloadInvoice(item.orderId)}
                       className="border px-4 py-2 text-sm font-medium rounded-sm"
                     >
-                      Request Return
+                      View Invoice
                     </button>
-                  )}
+                    <button
+                      onClick={() => sendInvoice(item.orderId, item.email)}
+                      className="border px-4 py-2 text-sm font-medium rounded-sm"
+                    >
+                      Email Invoice
+                    </button>
 
-                  {/* Show if the user has already requested a return */}
-                  {item.returnStatus === 'pending' && (
-                    <span className="text-blue-500 text-sm font-medium">
-                      Return Pending
-                    </span>
-                  )}
+                    {/* Conditionally show "Request Return" or "Return Status" */}
+                    {item.returnStatus === "none" && (
+                      <button
+                        onClick={() => requestReturn(item.orderId)}
+                        className="border px-4 py-2 text-sm font-medium rounded-sm"
+                      >
+                        Request Return
+                      </button>
+                    )}
+                  </div>
 
-                  {/* If you want to show other states */}
-                  {item.returnStatus === 'approved' && (
-                    <div>
-                      <span className="text-green-500 text-sm font-medium">
-                        Return Approved
-                      </span>
-                      {item.refundAmount && (
-                        <p className="text-green-500 text-sm font-medium mt-1">
-                          Refunded: {currency}{Number(item.refundAmount).toFixed(2)}
-                        </p>
-                      )}
+                  {/* Rating Section */}
+                  <div className="mt-2">
+                    <p className="text-sm">Rate this product:</p>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => submitRating(item.orderId, item._id, star)}
+                          className="text-yellow-500 hover:text-yellow-700"
+                        >
+                          ★
+                        </button>
+                      ))}
                     </div>
-                  )}
-                  {item.returnStatus === 'refunded' && (
-                    <div>
-                      <span className="text-green-500 text-sm font-medium">
-                        Refunded
-                      </span>
-                      <p className="text-green-500 text-sm font-medium mt-1">
-                        Amount: {currency}{Number(item.refundAmount).toFixed(2)}
-                      </p>
-                    </div>
-                  )}
-                  {item.returnStatus === 'rejected' && (
-                    <span className="text-red-500 text-sm font-medium">
-                      Return Rejected
-                    </span>
-                  )}
+                  </div>
                 </div>
               )}
             </div>
