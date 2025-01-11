@@ -35,6 +35,8 @@ const Categories = ({ token }) => {
         .map(cat => cat.trim())
         .filter(cat => cat !== '');
 
+      console.log('Subcategories before sending:', subCategoriesArray);
+
       const response = await axios.post(
         `${backendUrl}/api/product/category/add`,
         { 
@@ -43,6 +45,8 @@ const Categories = ({ token }) => {
         },
         { headers: { token } }
       );
+
+      console.log('Response from server:', response.data);
 
       if (response.data.success) {
         toast.success(response.data.message);
@@ -61,10 +65,14 @@ const Categories = ({ token }) => {
   // Update category
   const handleUpdateCategory = async (oldCategory) => {
     try {
+      // Process subcategories before sending
       const subCategoriesArray = editedSubCategories
         .split(',')
         .map(cat => cat.trim())
         .filter(cat => cat !== '');
+
+      console.log('Editing subcategories:', editedSubCategories);
+      console.log('Processed subcategories array:', subCategoriesArray);
 
       const response = await axios.post(
         `${backendUrl}/api/product/category/update`,
@@ -76,15 +84,19 @@ const Categories = ({ token }) => {
         { headers: { token } }
       );
 
+      console.log('Update response:', response.data);
+
       if (response.data.success) {
         toast.success(response.data.message);
         setEditingCategory(null);
-        fetchCategories();
+        setEditedName('');
+        setEditedSubCategories('');
+        await fetchCategories();
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.log(error);
+      console.log('Error updating category:', error);
       toast.error('Error updating category');
     }
   };
@@ -116,9 +128,15 @@ const Categories = ({ token }) => {
 
   // Start editing a category
   const startEditing = (category) => {
+    console.log('Starting edit for category:', category);
     setEditingCategory(category.category);
     setEditedName(category.category);
-    setEditedSubCategories(category.subCategories.join(', '));
+    // Filter out empty subcategories and join with comma and space
+    const cleanedSubCategories = category.subCategories
+      .filter(subCat => subCat !== '' && subCat !== null && subCat !== undefined)
+      .join(', ');
+    console.log('Setting subcategories for editing:', cleanedSubCategories);
+    setEditedSubCategories(cleanedSubCategories);
   };
 
   useEffect(() => {
@@ -182,12 +200,21 @@ const Categories = ({ token }) => {
                   onChange={(e) => setEditedName(e.target.value)}
                   className="border rounded p-1"
                 />
-                <input
-                  type="text"
-                  value={editedSubCategories}
-                  onChange={(e) => setEditedSubCategories(e.target.value)}
-                  className="border rounded p-1"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sub-Categories (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={editedSubCategories}
+                    onChange={(e) => {
+                      console.log('Subcategories input changed:', e.target.value);
+                      setEditedSubCategories(e.target.value);
+                    }}
+                    className="w-full border rounded p-1"
+                    placeholder="e.g. Sub1, Sub2, Sub3"
+                  />
+                </div>
                 <div className="text-center">{category.count}</div>
                 <div className="flex justify-center gap-2">
                   <button
@@ -197,7 +224,11 @@ const Categories = ({ token }) => {
                     Save
                   </button>
                   <button
-                    onClick={() => setEditingCategory(null)}
+                    onClick={() => {
+                      setEditingCategory(null);
+                      setEditedName('');
+                      setEditedSubCategories('');
+                    }}
                     className="text-red-600 hover:text-red-800"
                   >
                     Cancel
@@ -207,7 +238,7 @@ const Categories = ({ token }) => {
             ) : (
               <>
                 <div>{category.category}</div>
-                <div>{category.subCategories.join(', ')}</div>
+                <div>{category.subCategories.filter(s => s !== '').join(', ')}</div>
                 <div className="text-center">{category.count}</div>
                 <div className="flex justify-center gap-2">
                   <button
