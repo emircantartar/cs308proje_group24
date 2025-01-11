@@ -88,17 +88,9 @@ const ProductManager = ({ token }) => {
   // Add category
   const handleAddCategory = async () => {
     try {
-      // Split and clean subcategories
-      const subCategoriesArray = newCategory.split(',')
-        .map(cat => cat.trim())
-        .filter(cat => cat !== '');
-
       const response = await axios.post(
         `${backendUrl}/api/product/category/add`,
-        { 
-          category: newCategory,
-          subCategories: subCategoriesArray 
-        },
+        { category: newCategory },
         { headers: { token } }
       );
       if (response.data.success) {
