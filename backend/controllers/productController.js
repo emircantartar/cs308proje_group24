@@ -13,6 +13,67 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+
+
+// Add a review
+export const addReview = async (req, res) => {
+    try {
+        const { productId, rating, reviewText } = req.body;
+        const userId = req.user._id;
+
+        // Find the product
+        const product = await productModel.findById(productId);
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        // Check if the user has already reviewed
+        const existingReview = product.reviews.find((review) => review.user.toString() === userId);
+        if (existingReview) {
+            return res.status(400).json({ success: false, message: "You have already reviewed this product" });
+        }
+
+        // Add the review
+        const newReview = {
+            user: userId,
+            rating: Number(rating),
+            reviewText,
+        };
+        product.reviews.push(newReview);
+
+        // Update average rating and review count
+        const totalRatings = product.reviews.reduce((acc, review) => acc + review.rating, 0);
+        product.averageRating = totalRatings / product.reviews.length;
+        product.reviewCount = product.reviews.length;
+
+        await product.save();
+
+        res.json({ success: true, message: "Review added successfully", product });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Get reviews for a product
+export const getReviews = async (req, res) => {
+    try {
+        const { productId } = req.params;
+
+        // Find the product
+        const product = await productModel.findById(productId).populate("reviews.user", "name");
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        res.json({ success: true, reviews: product.reviews });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
 // Function for adding a product
 const addProduct = async (req, res) => {
   try {
@@ -430,9 +491,6 @@ export const addCategory = async (req, res) => {
   try {
     const { category, subCategories } = req.body;
     
-    console.log('Received category:', category);
-    console.log('Received subCategories:', subCategories);
-    
     // Validate input
     if (!category) {
       return res.json({ success: false, message: "Category name is required" });
@@ -452,51 +510,28 @@ export const addCategory = async (req, res) => {
       return res.json({ success: false, message: "Category already exists" });
     }
 
-    // Create a placeholder product for each subcategory
-    const subCategoriesArray = subCategories || [];
-    console.log('Processed subCategoriesArray:', subCategoriesArray);
-    
-    if (subCategoriesArray.length === 0) {
-      // If no subcategories, create one placeholder product
-      const placeholderProduct = new productModel({
-        name: `${category} Category Placeholder`,
-        description: `Placeholder product for category: ${category}`,
-        price: 0,
-        category: category,
-        subCategory: '',
-        sizes: [],
-        image: [],
-        quantity: 0,
-        date: Date.now()
-      });
-      await placeholderProduct.save();
-      console.log('Created placeholder product with no subcategory');
-    } else {
-      // Create a placeholder product for each subcategory
-      for (const subCategory of subCategoriesArray) {
-        const placeholderProduct = new productModel({
-          name: `${category} Category Placeholder`,
-          description: `Placeholder product for category: ${category}`,
-          price: 0,
-          category: category,
-          subCategory: subCategory,
-          sizes: [],
-          image: [],
-          quantity: 0,
-          date: Date.now()
-        });
-        await placeholderProduct.save();
-        console.log('Created placeholder product with subcategory:', subCategory);
-      }
-    }
+    // Create a placeholder product to store the category
+    const placeholderProduct = new productModel({
+      name: `${category} Category Placeholder`,
+      description: `Placeholder product for category: ${category}`,
+      price: 0,
+      category: category,
+      subCategory: subCategories?.[0] || '',
+      sizes: [],
+      image: [],
+      quantity: 0,
+      date: Date.now()
+    });
+
+    await placeholderProduct.save();
 
     res.json({ 
       success: true, 
       message: "Category added successfully",
       category: {
         category,
-        subCategories: subCategoriesArray,
-        count: subCategoriesArray.length || 1
+        subCategories: subCategories || [],
+        count: 1
       }
     });
   } catch (error) {
@@ -510,12 +545,6 @@ export const updateCategory = async (req, res) => {
   try {
     const { oldCategory, newCategory, subCategories } = req.body;
     
-    console.log('Update request received:', {
-      oldCategory,
-      newCategory,
-      subCategories
-    });
-    
     // Validate input
     if (!oldCategory || !newCategory) {
       return res.json({ success: false, message: "Both old and new category names are required" });
@@ -523,103 +552,29 @@ export const updateCategory = async (req, res) => {
 
     // Check if new category already exists (unless it's the same as old)
     if (oldCategory !== newCategory) {
-      const existingCategory = await productModel.findOne({ 
-        category: newCategory,
-        name: { $not: /Category Placeholder$/ }
-      });
-      if (existingCategory) {
+      const existingProducts = await productModel.findOne({ category: newCategory });
+      if (existingProducts) {
         return res.json({ success: false, message: "New category name already exists" });
       }
     }
 
-    // First, update all non-placeholder products
+    // Update all products in the category
     await productModel.updateMany(
+      { category: oldCategory },
       { 
-        category: oldCategory,
-        name: { $not: /Category Placeholder$/ }
-      },
-      { 
-        $set: { category: newCategory }
+        $set: { 
+          category: newCategory,
+          subCategory: subCategories?.[0] || '' // Update subcategory if provided
+        }
       }
     );
 
-    // Then, delete all existing placeholder products for this category
-    await productModel.deleteMany({
-      category: oldCategory,
-      name: /Category Placeholder$/
-    });
-
-    // Create new placeholder products for each subcategory
-    if (subCategories && subCategories.length > 0) {
-      for (const subCategory of subCategories) {
-        const placeholderProduct = new productModel({
-          name: `${newCategory} Category Placeholder`,
-          description: `Placeholder product for category: ${newCategory}`,
-          price: 0,
-          category: newCategory,
-          subCategory: subCategory,
-          sizes: [],
-          image: [],
-          quantity: 0,
-          date: Date.now()
-        });
-        await placeholderProduct.save();
-      }
-    } else {
-      // Create a default placeholder if no subcategories
-      const placeholderProduct = new productModel({
-        name: `${newCategory} Category Placeholder`,
-        description: `Placeholder product for category: ${newCategory}`,
-        price: 0,
-        category: newCategory,
-        subCategory: '',
-        sizes: [],
-        image: [],
-        quantity: 0,
-        date: Date.now()
-      });
-      await placeholderProduct.save();
-    }
-
-    // Get updated category data
-    const updatedCategory = await productModel.aggregate([
-      {
-        $match: { category: newCategory }
-      },
-      {
-        $group: {
-          _id: "$category",
-          subCategories: { $addToSet: "$subCategory" },
-          count: {
-            $sum: {
-              $cond: [
-                { $not: [{ $regexMatch: { input: "$name", regex: /Category Placeholder$/ } }] },
-                1,
-                0
-              ]
-            }
-          }
-        }
-      }
-    ]);
-
-    const categoryData = updatedCategory[0] || {
-      _id: newCategory,
-      subCategories: subCategories || [''],
-      count: 0
-    };
-
     res.json({ 
       success: true, 
-      message: "Category updated successfully",
-      category: {
-        category: newCategory,
-        subCategories: categoryData.subCategories.filter(s => s !== ''),
-        count: categoryData.count
-      }
+      message: "Category updated successfully"
     });
   } catch (error) {
-    console.log('Error in updateCategory:', error);
+    console.log(error);
     res.json({ success: false, message: error.message });
   }
 };
