@@ -17,6 +17,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import Verify from './pages/Verify';
 import { useContext } from 'react';
 import { ShopContext } from './context/ShopContext';
+import Profile from './pages/Profile';
 
 // Layout Component
 const Layout = ({ children }) => (
@@ -131,6 +132,14 @@ const App = () => {
         element={
           <Layout>
             <ProtectedRoute element={<Orders />} />
+          </Layout>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <Layout>
+            <ProtectedRoute element={<Profile />} />
           </Layout>
         }
       />

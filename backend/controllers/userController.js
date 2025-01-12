@@ -133,5 +133,62 @@ const adminLogin = async (req, res) => {
     }
 }
 
+// Route to get user profile information
+const getUserProfile = async (req, res) => {
+    try {
+        const userId = req.user._id; // Changed from req.user.id to req.user._id
+        const user = await userModel.findById(userId).select('-password'); // Exclude password from the response
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
 
-export { loginUser, registerUser, adminLogin }
+        res.json({ 
+            success: true, 
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                address: user.address || ''
+            }
+        });
+
+    } catch (error) {
+        console.error('Get profile error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+// Route to update user profile information
+const updateUserProfile = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { address } = req.body;
+        
+        const user = await userModel.findByIdAndUpdate(
+            userId,
+            { address },
+            { new: true }
+        ).select('-password');
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        res.json({ 
+            success: true, 
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                address: user.address || ''
+            }
+        });
+
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+}
+
+export { loginUser, registerUser, adminLogin, getUserProfile, updateUserProfile }
