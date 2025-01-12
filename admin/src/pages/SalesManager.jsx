@@ -43,99 +43,21 @@ const SalesManager = ({ token }) => {
   const [endDate, setEndDate] = useState('');
 
   // ---------------------
-  // State for financial analytics
-  // ---------------------
-  const [revenueData, setRevenueData] = useState({
-    dates: [],
-    revenue: [],
-    profit: [],
-    costs: []
-  });
-
-  // ---------------------
   // State for return/refund management
   // ---------------------
   const [returns, setReturns] = useState([]);
 
   // ---------------------
-  // Chart configuration
+  // State for financial analytics
   // ---------------------
-  const chartData = {
-    labels: revenueData.dates.map(date => new Date(date).toLocaleDateString()),
-    datasets: [
-      {
-        label: 'Revenue',
-        data: revenueData.revenue,
-        fill: true,
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.4
-      },
-      {
-        label: 'Profit/Loss',
-        data: revenueData.profit,
-        fill: true,
-        borderColor: 'rgb(54, 162, 235)',
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        tension: 0.4
-      },
-      {
-        label: 'Costs',
-        data: revenueData.costs,
-        fill: true,
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        tension: 0.4
-      }
-    ]
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'top',
-        labels: {
-          font: {
-            size: 14,
-            weight: 'bold'
-          }
-        }
-      },
-      title: {
-        display: true,
-        text: 'Revenue Over Time',
-        font: {
-          size: 16,
-          weight: 'bold'
-        }
-      },
-      tooltip: {
-        mode: 'index',
-        intersect: false
-      }
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { font: { size: 12 } }
-      },
-      y: {
-        beginAtZero: true,
-        grid: { color: 'rgba(0, 0, 0, 0.1)' },
-        ticks: {
-          font: { size: 12 },
-          callback: value => `${currency}${value}`
-        }
-      }
-    },
-    interaction: {
-      mode: 'nearest',
-      axis: 'x',
-      intersect: false
-    }
-  };
+  const [revenueData, setRevenueData] = useState({
+    dates: [],
+    revenue: [],
+    costs: [],
+    profit: []
+  });
+  const [financialStartDate, setFinancialStartDate] = useState('');
+  const [financialEndDate, setFinancialEndDate] = useState('');
 
   // ----------------------------------------------------
   // 1) DISCOUNT MANAGEMENT
@@ -153,6 +75,24 @@ const SalesManager = ({ token }) => {
     };
     fetchProducts();
   }, []);
+
+  // Load financial data on component mount
+  useEffect(() => {
+    // Set default date range to last 30 days
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 30);
+    
+    setFinancialEndDate(end.toISOString().split('T')[0]);
+    setFinancialStartDate(start.toISOString().split('T')[0]);
+  }, []);
+
+  // Fetch financial data when date range changes
+  useEffect(() => {
+    if (financialStartDate && financialEndDate) {
+      fetchFinancialData();
+    }
+  }, [financialStartDate, financialEndDate]);
 
   // Refresh products in frontend
   const refreshProducts = async () => {
@@ -310,41 +250,6 @@ const SalesManager = ({ token }) => {
   };
 
   // ----------------------------------------------------
-  // 3) FINANCIAL ANALYTICS
-  // ----------------------------------------------------
-  const handleFetchFinancialData = async () => {
-    try {
-      if (!startDate || !endDate) {
-        toast.error('Please select both start and end dates');
-        return;
-      }
-      const response = await axios.post(
-        `${backendUrl}/api/order/analytics/revenue`,
-        { startDate, endDate },
-        { headers: { token } }
-      );
-      if (response.data.success) {
-        if (response.data.dates.length === 0) {
-          toast.info('No financial data found for the selected date range');
-          return;
-        }
-        setRevenueData({
-          dates: response.data.dates,
-          revenue: response.data.revenue,
-          profit: response.data.profit,
-          costs: response.data.costs
-        });
-        toast.success('Financial report generated successfully');
-      } else {
-        toast.error(response.data.message || 'Error generating financial report');
-      }
-    } catch (error) {
-      console.error('Financial data error:', error);
-      toast.error(error.response?.data?.message || 'Error fetching financial data');
-    }
-  };
-
-  // ----------------------------------------------------
   // 4) RETURN/REFUND MANAGEMENT
   // ----------------------------------------------------
   const handleFetchReturns = async () => {
@@ -367,7 +272,6 @@ const SalesManager = ({ token }) => {
   // Approve or Decline the return
   const handleUpdateReturnStatus = async (orderId, newStatus) => {
     try {
-      // Update the return status
       const response = await axios.patch(
         `${backendUrl}/api/order/return/${orderId}`,
         { 
@@ -376,54 +280,15 @@ const SalesManager = ({ token }) => {
         },
         { headers: { token } }
       );
-      
-      if (!response.data.success) {
+      if (response.data.success) {
+        toast.success(`Return status updated to '${newStatus}'`);
+        handleFetchReturns(); // Refresh the list to see updated statuses
+      } else {
         toast.error(response.data.message || 'Failed to update return status');
-        return;
       }
-
-      toast.success(`Return status updated to '${newStatus}'`);
-      
-      // If return is approved, update the product stock
-      if (newStatus === 'approved') {
-        try {
-          // Get the return details to find the product and quantity
-          const returnResponse = await axios.get(
-            `${backendUrl}/api/order/return/${orderId}`,
-            { headers: { token } }
-          );
-          
-          if (returnResponse.data.success && returnResponse.data.order) {
-            const orderData = returnResponse.data.order;
-            // Update stock for each item in the order
-            for (const item of orderData.items) {
-              try {
-                const stockResponse = await axios.post(
-                  `${backendUrl}/api/product/update-stock-return`,
-                  {
-                    productId: item._id,
-                    returnedQuantity: item.quantity
-                  },
-                  { headers: { token } }
-                );
-
-                if (!stockResponse.data.success) {
-                  console.error('Failed to update stock:', stockResponse.data.message);
-                }
-              } catch (error) {
-                console.error('Error updating stock for item:', error);
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error processing return details:', error);
-        }
-      }
-
-      handleFetchReturns(); // Refresh the list to see updated statuses
     } catch (error) {
-      console.error('Error in return status update:', error);
-      toast.error('Failed to process the return. Please try again.');
+      console.error('Update return status error:', error);
+      toast.error(error.response?.data?.message || 'Error updating return status');
     }
   };
 
@@ -449,6 +314,155 @@ const SalesManager = ({ token }) => {
     } catch (error) {
       console.error('Refund error:', error);
       toast.error(error.response?.data?.message || 'Error processing refund');
+    }
+  };
+
+  const fetchFinancialData = async () => {
+    try {
+      const response = await axios.post(
+        `${backendUrl}/api/order/invoices`,
+        { startDate: financialStartDate, endDate: financialEndDate },
+        { headers: { token } }
+      );
+
+      if (response.data.success) {
+        const orders = response.data.invoices;
+        console.log('Fetched orders:', orders);
+
+        if (!orders || orders.length === 0) {
+          toast.info('No order data available for selected date range');
+          return;
+        }
+        
+        // Group orders by date
+        const groupedData = orders.reduce((acc, order) => {
+          const date = new Date(order.date).toISOString().split('T')[0];
+          if (!acc[date]) {
+            acc[date] = {
+              revenue: 0,
+              costs: 0,
+              profit: 0
+            };
+          }
+          
+          // Calculate revenue from total (ensure it's a number)
+          const orderTotal = Number(order.total) || 0;
+          acc[date].revenue += orderTotal;
+          // Fixed cost of 50 dollars per order
+          acc[date].costs += 50;
+          // Calculate profit (revenue - costs)
+          acc[date].profit = acc[date].revenue - acc[date].costs;
+          
+          return acc;
+        }, {});
+
+        // Fill in missing dates with zero values
+        let currentDate = new Date(financialStartDate);
+        const endDateObj = new Date(financialEndDate);
+        while (currentDate <= endDateObj) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          if (!groupedData[dateStr]) {
+            groupedData[dateStr] = {
+              revenue: 0,
+              costs: 0,
+              profit: 0
+            };
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        // Sort dates and prepare chart data
+        const dates = Object.keys(groupedData).sort();
+        const chartData = {
+          dates,
+          revenue: dates.map(date => groupedData[date].revenue),
+          costs: dates.map(date => groupedData[date].costs),
+          profit: dates.map(date => groupedData[date].profit)
+        };
+
+        setRevenueData(chartData);
+        toast.success('Financial data updated successfully');
+      }
+    } catch (error) {
+      console.error('Error fetching financial data:', error);
+      toast.error('Error fetching financial data: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const chartData = {
+    labels: revenueData.dates.map(date => new Date(date).toLocaleDateString()),
+    datasets: [
+      {
+        label: 'Revenue',
+        data: revenueData.revenue,
+        fill: true,
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        tension: 0.4
+      },
+      {
+        label: 'Profit/Loss',
+        data: revenueData.profit,
+        fill: true,
+        borderColor: 'rgb(54, 162, 235)',
+        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+        tension: 0.4
+      },
+      {
+        label: 'Costs',
+        data: revenueData.costs,
+        fill: true,
+        borderColor: 'rgb(255, 99, 132)',
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        tension: 0.4
+      }
+    ]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+        labels: {
+          font: {
+            size: 14,
+            weight: 'bold'
+          }
+        }
+      },
+      title: {
+        display: true,
+        text: 'Revenue Over Time',
+        font: {
+          size: 16,
+          weight: 'bold'
+        }
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 12 } }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(0, 0, 0, 0.1)' },
+        ticks: {
+          font: { size: 12 },
+          callback: value => `${currency}${value}`
+        }
+      }
+    },
+    interaction: {
+      mode: 'nearest',
+      axis: 'x',
+      intersect: false
     }
   };
 
@@ -579,48 +593,6 @@ const SalesManager = ({ token }) => {
         </div>
       </div>
 
-      {/* FINANCIAL ANALYTICS SECTION */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">Financial Analytics</h2>
-        <div className="flex gap-4 mb-4">
-          <input
-            type="date"
-            className="border p-2 rounded"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-          <input
-            type="date"
-            className="border p-2 rounded"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-          <button
-            className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 transition-colors"
-            onClick={handleFetchFinancialData}
-          >
-            Generate Report
-          </button>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-lg">
-          <div className="h-[400px]">
-            <Line data={chartData} options={chartOptions} />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            {revenueData.dates.map((date, index) => (
-              <div key={date} className="border p-4 rounded bg-gray-50">
-                <p className="font-semibold">
-                  Date: {new Date(date).toLocaleDateString()}
-                </p>
-                <p className="text-lg text-green-600">
-                  Revenue: {currency}{Number(revenueData.revenue[index]).toFixed(2)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* RETURN / REFUND MANAGEMENT SECTION */}
       <div className="mb-8">
         <h2 className="text-2xl font-bold mb-4">Return / Refund Management</h2>
@@ -648,31 +620,30 @@ const SalesManager = ({ token }) => {
                 <p>Refund Amount: {currency}{Number(ret.refundAmount).toFixed(2)}</p>
               )}
 
-              {/* Status management buttons */}
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => handleUpdateReturnStatus(ret._id, 'approved')}
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
-                  disabled={ret.returnStatus === 'refunded' || ret.returnStatus === 'approved'}
+              {/* Status management slider */}
+              <div className="mt-3">
+                <select
+                  value={ret.returnStatus}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+                    handleUpdateReturnStatus(ret._id, newStatus);
+                  }}
+                  className="p-2 rounded border bg-white"
+                  disabled={ret.returnStatus === 'refunded'}
                 >
-                  Approve Return
-                </button>
-                <button
-                  onClick={() => handleUpdateReturnStatus(ret._id, 'rejected')}
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
-                  disabled={ret.returnStatus === 'refunded' || ret.returnStatus === 'rejected'}
-                >
-                  Reject Return
-                </button>
-                {ret.returnStatus === 'approved' && !ret.refundAmount && (
-                  <button
-                    onClick={() => handleRefund(ret._id, ret.amount)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-                  >
-                    Process Refund
-                  </button>
-                )}
+                  <option value="approved">Return Approved</option>
+                  <option value="rejected">Return Rejected</option>
+                </select>
               </div>
+
+              {/* Separate Refund button */}
+              <button
+                onClick={() => handleRefund(ret._id, ret.order.amount)}
+                className="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                disabled={ret.returnStatus === 'refunded'}
+              >
+                Process Refund
+              </button>
 
               {/* Show refund processed status only when refund is processed */}
               {ret.returnStatus === 'refunded' && ret.refundAmount && (
@@ -682,6 +653,34 @@ const SalesManager = ({ token }) => {
               )}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* FINANCIAL ANALYTICS SECTION */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold mb-4">Financial Analytics</h2>
+        <div className="flex gap-4 mb-4">
+          <input
+            type="date"
+            className="border p-2 rounded"
+            value={financialStartDate}
+            onChange={(e) => setFinancialStartDate(e.target.value)}
+          />
+          <input
+            type="date"
+            className="border p-2 rounded"
+            value={financialEndDate}
+            onChange={(e) => setFinancialEndDate(e.target.value)}
+          />
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+            onClick={fetchFinancialData}
+          >
+            Refresh Financial Data
+          </button>
+        </div>
+        <div className="h-[400px] border rounded p-4">
+          <Line data={chartData} options={chartOptions} />
         </div>
       </div>
     </div>
