@@ -351,14 +351,15 @@ const Orders = () => {
                     </button>
 
                     {/* Return request section */}
-                    {item.status === "Delivered" && item.returnStatus === "none" && !item.isReviewed ? (
+                    {item.status === "Delivered" && item.returnStatus === "none" && !userRatings[item.orderId] && (
                       <button
                         onClick={() => requestReturn(item.orderId)}
                         className="border px-4 py-2 text-sm font-medium rounded-sm"
                       >
                         Request Return
                       </button>
-                    ) : item.returnStatus !== "none" && (
+                    )} 
+                    {item.returnStatus !== "none" && (
                       <div className="text-sm">
                         <span className={
                           item.returnStatus === 'approved' ? 'text-green-600' :
