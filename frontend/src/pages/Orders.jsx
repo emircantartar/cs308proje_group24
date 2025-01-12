@@ -65,8 +65,9 @@ const Orders = () => {
     try {
       if (!token) return alert("Please log in to submit a rating.");
 
-      const response = await axios.post(
-        `${backendUrl}/api/order/reviewed/${orderId}`,
+      // First submit the review to the product
+      const reviewResponse = await axios.post(
+        `${backendUrl}/api/product/review`,
         { productId, rating },
         {
           headers: {
@@ -76,11 +77,25 @@ const Orders = () => {
         }
       );
 
-      if (response.data.success) {
-        setRatingMessage("Rating submitted successfully!");
-        loadOrderData(); // Reload order data to reflect the changes
+      if (reviewResponse.data.success) {
+        // Then mark the order item as reviewed
+        const orderResponse = await axios.post(
+          `${backendUrl}/api/order/reviewed/${orderId}`,
+          { productId, rating },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (orderResponse.data.success) {
+          setRatingMessage("Rating submitted successfully!");
+          loadOrderData(); // Reload order data to reflect the changes
+        }
       } else {
-        setRatingMessage(response.data.message || "Failed to submit rating.");
+        setRatingMessage(reviewResponse.data.message || "Failed to submit rating.");
       }
     } catch (error) {
       console.error("Error submitting rating:", error);
@@ -252,6 +267,11 @@ const Orders = () => {
                         }>
                           Return {item.returnStatus.charAt(0).toUpperCase() + item.returnStatus.slice(1)}
                         </span>
+                        {(item.returnStatus === 'approved' || item.returnStatus === 'refunded') && item.refundAmount && (
+                          <div className="mt-1 text-green-600">
+                            Refund Amount: {currency}{Number(item.refundAmount).toFixed(2)}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

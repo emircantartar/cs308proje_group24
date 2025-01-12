@@ -25,15 +25,9 @@ const Product = () => {
       setProductData(found);
       setImage(found.image[0]);
 
-      // Fetch rating information
-      const response = await fetch(`http://localhost:4000/api/product/reviews/${productId}`);
-      const data = await response.json();
-      if (response.ok) {
-        setAverageRating(data.averageRating || 0);
-        setReviewCount(data.reviewCount || 0);
-      } else {
-        console.error("Failed to fetch rating info:", data.message);
-      }
+      // Set rating information directly from the product data
+      setAverageRating(found.averageRating || 0);
+      setReviewCount(found.reviewCount || 0);
     }
   };
 
