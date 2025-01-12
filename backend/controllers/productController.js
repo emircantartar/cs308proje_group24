@@ -451,7 +451,27 @@ const getCategories = async (req, res) => {
             {
               $group: {
                 _id: "$category",
-                subCategories: { $addToSet: "$subCategory" }
+                subCategories: { 
+                  $addToSet: {
+                    $cond: [
+                      { $eq: ["$subCategory", ""] },
+                      null,
+                      "$subCategory"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                subCategories: {
+                  $filter: {
+                    input: "$subCategories",
+                    as: "subCat",
+                    cond: { $ne: ["$$subCat", null] }
+                  }
+                }
               }
             }
           ],
@@ -474,7 +494,7 @@ const getCategories = async (req, res) => {
       // Combine the results
       const combinedCategories = allCategories.map(cat => ({
         category: cat._id,
-        subCategories: cat.subCategories,
+        subCategories: cat.subCategories.filter(Boolean), // Remove any null/empty values
         count: nonPlaceholderCounts.find(c => c._id === cat._id)?.count || 0
       }));
 
@@ -515,20 +535,21 @@ const addCategory = async (req, res) => {
       return res.json({ success: false, message: "Category already exists" });
     }
 
-    // Create a placeholder product to store the category
-    const placeholderProduct = new productModel({
+    // Create placeholder products for each subcategory
+    const placeholderProducts = (subCategories || ['']).map(subCategory => ({
       name: `${category} Category Placeholder`,
-      description: `Placeholder product for category: ${category}`,
+      description: `Placeholder product for category: ${category}, subcategory: ${subCategory}`,
       price: 0,
       category: category,
-      subCategory: subCategories?.[0] || '',
+      subCategory: subCategory,
       sizes: [],
       image: [],
       quantity: 0,
       date: Date.now()
-    });
+    }));
 
-    await placeholderProduct.save();
+    // Save all placeholder products
+    await productModel.insertMany(placeholderProducts);
 
     res.json({ 
       success: true, 
@@ -536,7 +557,7 @@ const addCategory = async (req, res) => {
       category: {
         category,
         subCategories: subCategories || [],
-        count: 1
+        count: placeholderProducts.length
       }
     });
   } catch (error) {
@@ -563,13 +584,37 @@ const updateCategory = async (req, res) => {
       }
     }
 
-    // Update all products in the category
+    // Delete all placeholder products for the old category
+    await productModel.deleteMany({
+      category: oldCategory,
+      name: { $regex: /Category Placeholder$/ }
+    });
+
+    // Create new placeholder products for each subcategory
+    const placeholderProducts = (subCategories || ['']).map(subCategory => ({
+      name: `${newCategory} Category Placeholder`,
+      description: `Placeholder product for category: ${newCategory}, subcategory: ${subCategory}`,
+      price: 0,
+      category: newCategory,
+      subCategory: subCategory,
+      sizes: [],
+      image: [],
+      quantity: 0,
+      date: Date.now()
+    }));
+
+    // Save all new placeholder products
+    await productModel.insertMany(placeholderProducts);
+
+    // Update all non-placeholder products in the category
     await productModel.updateMany(
-      { category: oldCategory },
+      { 
+        category: oldCategory,
+        name: { $not: /Category Placeholder$/ }
+      },
       { 
         $set: { 
-          category: newCategory,
-          subCategory: subCategories?.[0] || '' // Update subcategory if provided
+          category: newCategory
         }
       }
     );

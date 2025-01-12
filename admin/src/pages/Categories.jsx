@@ -15,6 +15,7 @@ const Categories = ({ token }) => {
   const fetchCategories = async () => {
     try {
       const response = await axios.get(`${backendUrl}/api/product/categories`);
+      console.log('Fetched categories:', response.data); // Debug log
       if (response.data.success) {
         setCategories(response.data.categories);
       } else {
@@ -30,19 +31,28 @@ const Categories = ({ token }) => {
   const handleAddCategory = async (e) => {
     e.preventDefault();
     try {
+      // Split by comma, trim whitespace, and filter out empty strings
       const subCategoriesArray = newSubCategories
         .split(',')
         .map(cat => cat.trim())
-        .filter(cat => cat !== '');
+        .filter(Boolean); // This will remove empty strings, null, undefined
+
+      console.log('Subcategories before sending:', subCategoriesArray);
+
+      const requestData = { 
+        category: newCategory,
+        subCategories: subCategoriesArray
+      };
+
+      console.log('Request data:', requestData);
 
       const response = await axios.post(
         `${backendUrl}/api/product/category/add`,
-        { 
-          category: newCategory,
-          subCategories: subCategoriesArray
-        },
+        requestData,
         { headers: { token } }
       );
+
+      console.log('Server response:', response.data);
 
       if (response.data.success) {
         toast.success(response.data.message);
@@ -53,7 +63,7 @@ const Categories = ({ token }) => {
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.log(error);
+      console.log('Error details:', error.response?.data || error);
       toast.error('Error adding category');
     }
   };
@@ -61,20 +71,29 @@ const Categories = ({ token }) => {
   // Update category
   const handleUpdateCategory = async (oldCategory) => {
     try {
+      // Split by comma, trim whitespace, and filter out empty strings
       const subCategoriesArray = editedSubCategories
         .split(',')
         .map(cat => cat.trim())
-        .filter(cat => cat !== '');
+        .filter(Boolean); // This will remove empty strings, null, undefined
+
+      console.log('Subcategories before updating:', subCategoriesArray);
+
+      const requestData = {
+        oldCategory,
+        newCategory: editedName,
+        subCategories: subCategoriesArray
+      };
+
+      console.log('Update request data:', requestData);
 
       const response = await axios.post(
         `${backendUrl}/api/product/category/update`,
-        {
-          oldCategory,
-          newCategory: editedName,
-          subCategories: subCategoriesArray
-        },
+        requestData,
         { headers: { token } }
       );
+
+      console.log('Server update response:', response.data);
 
       if (response.data.success) {
         toast.success(response.data.message);
@@ -84,7 +103,7 @@ const Categories = ({ token }) => {
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.log(error);
+      console.log('Update error details:', error.response?.data || error);
       toast.error('Error updating category');
     }
   };
@@ -116,9 +135,10 @@ const Categories = ({ token }) => {
 
   // Start editing a category
   const startEditing = (category) => {
+    console.log('Starting edit with category:', category); // Debug log
     setEditingCategory(category.category);
     setEditedName(category.category);
-    setEditedSubCategories(category.subCategories.join(', '));
+    setEditedSubCategories(Array.isArray(category.subCategories) ? category.subCategories.join(', ') : '');
   };
 
   useEffect(() => {
@@ -207,7 +227,7 @@ const Categories = ({ token }) => {
             ) : (
               <>
                 <div>{category.category}</div>
-                <div>{category.subCategories.join(', ')}</div>
+                <div>{Array.isArray(category.subCategories) ? category.subCategories.join(', ') : ''}</div>
                 <div className="text-center">{category.count}</div>
                 <div className="flex justify-center gap-2">
                   <button
