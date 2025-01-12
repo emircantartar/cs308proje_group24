@@ -28,16 +28,31 @@ export const addReview = async (req, res) => {
         }
 
         // Check if the user has already reviewed
-        const existingReview = product.reviews.find((review) => review.user.toString() === userId);
-        if (existingReview) {
-            return res.status(400).json({ success: false, message: "You have already reviewed this product" });
+        const existingReviewIndex = product.reviews.findIndex(
+            (review) => review.user.toString() === userId.toString()
+        );
+        
+        if (existingReviewIndex !== -1) {
+            // Update existing review
+            product.reviews[existingReviewIndex].rating = Number(rating);
+            if (reviewText) {
+                product.reviews[existingReviewIndex].reviewText = reviewText;
+            }
+            product.reviews[existingReviewIndex].date = new Date();
+
+            // Recalculate average rating
+            const totalRatings = product.reviews.reduce((acc, review) => acc + review.rating, 0);
+            product.averageRating = totalRatings / product.reviews.length;
+
+            await product.save();
+            return res.json({ success: true, message: "Review updated successfully", product });
         }
 
-        // Add the review
+        // Add new review
         const newReview = {
             user: userId,
             rating: Number(rating),
-            reviewText,
+            reviewText: reviewText || "",
         };
         product.reviews.push(newReview);
 
@@ -60,8 +75,13 @@ export const getReviews = async (req, res) => {
     try {
         const { productId } = req.params;
 
-        // Find the product
-        const product = await productModel.findById(productId).populate("reviews.user", "name");
+        // Find the product and populate user details
+        const product = await productModel.findById(productId)
+            .populate({
+                path: "reviews.user",
+                select: "_id name"  // Only select necessary fields
+            });
+
         if (!product) {
             return res.status(404).json({ success: false, message: "Product not found" });
         }

@@ -26,7 +26,7 @@ export const markItemAsReviewed = async (req, res) => {
         }
 
         // Check if the order belongs to the user
-        if (order.userId !== userId) {
+        if (order.userId.toString() !== userId.toString()) {
             return res.status(403).json({ success: false, message: "Not authorized to modify this order" });
         }
 
@@ -36,21 +36,19 @@ export const markItemAsReviewed = async (req, res) => {
         }
 
         // Check if the item is in the order
-        const orderedItem = order.items.find((item) => item._id === productId);
+        const orderedItem = order.items.find((item) => item._id.toString() === productId);
         if (!orderedItem) {
             return res.status(400).json({ success: false, message: "Product not found in this order" });
         }
 
-        // Check if the item has already been reviewed
-        if (order.reviewedItems.includes(productId)) {
-            return res.status(400).json({ success: false, message: "This item has already been reviewed" });
+        // If item hasn't been reviewed before, mark it as reviewed
+        const isAlreadyReviewed = order.reviewedItems.some(item => item.toString() === productId.toString());
+        if (!isAlreadyReviewed) {
+            order.reviewedItems.push(productId);
+            await order.save();
         }
 
-        // Mark the item as reviewed
-        order.reviewedItems.push(productId);
-        await order.save();
-
-        res.json({ success: true, message: "Item marked as reviewed", order });
+        res.json({ success: true, message: "Item review status updated", order });
     } catch (error) {
         console.error("Error marking item as reviewed:", error);
         res.status(500).json({ success: false, message: error.message });

@@ -9,8 +9,9 @@ const Orders = () => {
 
   const [orderData, setOrderData] = useState([]);
   const [ratingMessage, setRatingMessage] = useState(""); // Success/error message for rating
+  const [userRatings, setUserRatings] = useState({}); // Store user ratings for each product
 
-  // 1) Load order data from the backend
+  // 1) Load order data and user ratings from the backend
   const loadOrderData = async () => {
     try {
       if (!token) return;
@@ -48,6 +49,36 @@ const Orders = () => {
 
         // Sort by date, newest first
         setOrderData(allOrdersItem.sort((a, b) => b.date - a.date));
+
+        // Load user ratings for each product
+        const ratings = {};
+        for (const item of allOrdersItem) {
+          try {
+            const ratingResponse = await axios.get(
+              `${backendUrl}/api/product/reviews/${item._id}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
+            if (ratingResponse.data.success && ratingResponse.data.reviews) {
+              // Get user ID from the token
+              const decodedToken = JSON.parse(atob(token.split('.')[1]));
+              const userId = decodedToken.id;
+
+              const userReview = ratingResponse.data.reviews.find(
+                (review) => review.user._id === userId
+              );
+              if (userReview) {
+                ratings[item._id] = userReview.rating;
+              }
+            }
+          } catch (error) {
+            console.error("Error loading rating for product:", error);
+          }
+        }
+        setUserRatings(ratings);
       }
     } catch (error) {
       console.error("Error loading orders:", error);
@@ -65,7 +96,7 @@ const Orders = () => {
     try {
       if (!token) return alert("Please log in to submit a rating.");
 
-      // First submit the review to the product
+      // Submit the review to the product
       const reviewResponse = await axios.post(
         `${backendUrl}/api/product/review`,
         { productId, rating },
@@ -78,7 +109,7 @@ const Orders = () => {
       );
 
       if (reviewResponse.data.success) {
-        // Then mark the order item as reviewed
+        // Then mark the order item as reviewed if it hasn't been reviewed before
         const orderResponse = await axios.post(
           `${backendUrl}/api/order/reviewed/${orderId}`,
           { productId, rating },
@@ -90,10 +121,18 @@ const Orders = () => {
           }
         );
 
+        // Update the local state with the new rating
+        setUserRatings(prev => ({
+          ...prev,
+          [productId]: rating
+        }));
+
         if (orderResponse.data.success) {
           setRatingMessage("Rating submitted successfully!");
-          loadOrderData(); // Reload order data to reflect the changes
+        } else if (orderResponse.data.message === "This item has already been reviewed") {
+          setRatingMessage("Rating updated successfully!");
         }
+        loadOrderData(); // Reload order data to reflect the changes
       } else {
         setRatingMessage(reviewResponse.data.message || "Failed to submit rating.");
       }
@@ -284,11 +323,20 @@ const Orders = () => {
                         <button
                           key={star}
                           onClick={() => submitRating(item.orderId, item._id, star)}
-                          className="text-yellow-500 hover:text-yellow-700"
+                          className={`text-2xl ${
+                            star <= (userRatings[item._id] || 0)
+                              ? "text-yellow-500"
+                              : "text-gray-300"
+                          } hover:text-yellow-500 transition-colors`}
                         >
                           ★
                         </button>
                       ))}
+                      {userRatings[item._id] && (
+                        <span className="text-sm text-gray-500 ml-2">
+                          (Your rating: {userRatings[item._id]})
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

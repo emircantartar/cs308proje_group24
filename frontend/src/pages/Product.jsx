@@ -118,17 +118,29 @@ const Product = () => {
             </div>
           )}
           <div className="flex items-center gap-1 mt-2">
-            {/* Dynamically display average rating */}
-            {[...Array(5)].map((_, index) => (
-              <img
-                key={index}
-                src={index < Math.round(averageRating) ? assets.star_icon : assets.star_dull_icon}
-                alt=""
-                className="w-3.5"
-              />
-            ))}
+            {/* Dynamically display average rating with half stars */}
+            {[1, 2, 3, 4, 5].map((index) => {
+              const difference = averageRating - index + 1;
+              return (
+                <span key={index} className="text-xl relative">
+                  {difference >= 1 ? (
+                    // Full star
+                    <span className="text-yellow-500">★</span>
+                  ) : difference > 0 && difference < 1 ? (
+                    // Half star
+                    <div className="relative inline-block">
+                      <span className="text-gray-300">★</span>
+                      <span className="text-yellow-500 absolute overflow-hidden left-0 top-0" style={{ width: `${difference * 100}%` }}>★</span>
+                    </div>
+                  ) : (
+                    // Empty star
+                    <span className="text-gray-300">★</span>
+                  )}
+                </span>
+              );
+            })}
             <p className="pl-2">
-              ({reviewCount} review{reviewCount === 1 ? "" : "s"})
+              {averageRating > 0 ? `(${averageRating.toFixed(1)} - ${reviewCount} review${reviewCount === 1 ? "" : "s"})` : "(No reviews yet)"}
             </p>
           </div>
           <div className="mt-5 flex items-center gap-3">
