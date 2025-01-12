@@ -506,15 +506,36 @@ export const updateStatus = async (req, res) => {
 export const sendInvoiceEmail = async (req, res) => {
   try {
     const { orderId, email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email address is required' });
+    }
+
     const order = await orderModel.findById(orderId);
+    
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    const invoicePath = path.resolve(`invoices/invoice_${orderId}.pdf`);
-    if (!fs.existsSync(invoicePath)) {
-      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    // Check authorization - allow both admin and order owner
+    const isAdmin = req.userRole === 'admin' || req.userRole === 'sales_manager' || req.userRole === 'product_manager';
+    const isOwner = String(order.userId) === String(req.user._id);
+    
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ success: false, message: 'Not authorized to access this order' });
     }
+
+    // Validate email configuration
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error('Email configuration missing');
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Email service not properly configured. Please contact support.' 
+      });
+    }
+
+    // Generate the invoice PDF
+    const pdfPath = await generatePDF(order);
 
     const transporter = nodemailer.createTransport({
       service: 'Gmail',
@@ -522,7 +543,20 @@ export const sendInvoiceEmail = async (req, res) => {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      debug: true, // Enable debug logs
+      logger: true // Enable logger
     });
+
+    // Verify transporter configuration
+    try {
+      await transporter.verify();
+    } catch (error) {
+      console.error('Email transporter verification failed:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Email service configuration error. Please try again later.' 
+      });
+    }
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -532,21 +566,29 @@ export const sendInvoiceEmail = async (req, res) => {
       attachments: [
         {
           filename: `invoice_${orderId}.pdf`,
-          path: invoicePath,
+          path: pdfPath,
         },
       ],
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error(error);
-        return res.status(500).json({ success: false, message: 'Failed to send email' });
-      }
-      res.json({ success: true, message: 'Invoice emailed successfully' });
-    });
+    // Use Promise-based email sending
+    await transporter.sendMail(mailOptions);
+    
+    // Clean up the PDF file after sending
+    try {
+      fs.unlinkSync(pdfPath);
+    } catch (error) {
+      console.error('Error cleaning up PDF file:', error);
+    }
+
+    res.json({ success: true, message: 'Invoice emailed successfully' });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Email sending error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to send email. Please check your email configuration or try again later.' 
+    });
   }
 };
 

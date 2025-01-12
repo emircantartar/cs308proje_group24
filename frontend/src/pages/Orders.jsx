@@ -10,6 +10,7 @@ const Orders = () => {
   const [orderData, setOrderData] = useState([]);
   const [ratingMessage, setRatingMessage] = useState(""); // Success/error message for rating
   const [userRatings, setUserRatings] = useState({}); // Store user ratings for each product
+  const [userEmail, setUserEmail] = useState(""); // Add state for user email
 
   // 1) Load order data and user ratings from the backend
   const loadOrderData = async () => {
@@ -256,8 +257,56 @@ const Orders = () => {
     }
   };
 
+  // Add function to fetch user profile
+  const fetchUserProfile = async () => {
+    try {
+      const response = await axios.get(`${backendUrl}/api/user/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setUserEmail(response.data.user.email);
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
+
+  // Add sendInvoice function
+  const sendInvoice = async (orderId) => {
+    try {
+      if (!token) return alert("Please log in to send invoice.");
+
+      const response = await axios.post(
+        `${backendUrl}/api/order/invoice/email`,
+        { 
+          orderId,
+          email: userEmail 
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        toast.success("Invoice sent to your email successfully!");
+      } else {
+        toast.error(response.data.message || "Failed to send invoice.");
+      }
+    } catch (error) {
+      console.error("Error sending invoice:", error);
+      toast.error(
+        error.response?.data?.message || "Error sending invoice. Please try again."
+      );
+    }
+  };
+
   useEffect(() => {
     loadOrderData();
+    fetchUserProfile(); // Add this line to fetch user profile
   }, [token]);
 
   return (
@@ -344,7 +393,7 @@ const Orders = () => {
                       View Invoice
                     </button>
                     <button
-                      onClick={() => sendInvoice(item.orderId, item.email)}
+                      onClick={() => sendInvoice(item.orderId)}
                       className="border px-4 py-2 text-sm font-medium rounded-sm"
                     >
                       Email Invoice

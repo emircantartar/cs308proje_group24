@@ -26,7 +26,7 @@ orderRouter.post("/status", adminAuth, updateStatus);
 orderRouter.post("/place", authUser, placeOrder);
 orderRouter.post("/userorders", authUser, userOrders);
 orderRouter.get("/invoice/:orderId", authUserOrAdmin, downloadInvoice);
-orderRouter.post("/invoice/email", adminAuth, sendInvoiceEmail);
+orderRouter.post("/invoice/email", authUserOrAdmin, sendInvoiceEmail);
 orderRouter.post("/invoices", adminAuth, getInvoices);
 
 // Return Routes
