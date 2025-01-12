@@ -3,6 +3,9 @@ import { useParams } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
 import { assets } from "../assets/assets";
 import RelatedProducts from "../components/RelatedProducts";
+import axios from "axios";
+
+const backendUrl = "http://localhost:4000";
 
 const Product = () => {
   const { productId } = useParams();
@@ -18,23 +21,46 @@ const Product = () => {
   const [wishlistMessage, setWishlistMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Grab this product from the `products` array
+  // Grab this product from the `products` array and fetch fresh data
   const fetchProductData = async () => {
-    const found = products.find((item) => item._id === productId);
-    if (found) {
-      setProductData(found);
-      setImage(found.image[0]);
+    try {
+      // First set data from products array for immediate display
+      const found = products.find((item) => item._id === productId);
+      if (found) {
+        setProductData(found);
+        setImage(found.image[0]);
+      }
 
-      // Set rating information directly from the product data
-      setAverageRating(found.averageRating || 0);
-      setReviewCount(found.reviewCount || 0);
+      // Then fetch fresh data from the backend
+      const response = await axios.post(
+        `${backendUrl}/api/product/single`,
+        { productId },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        const freshData = response.data.product;
+        setProductData(freshData);
+        setImage(freshData.image[0]);
+        setAverageRating(freshData.averageRating || 0);
+        setReviewCount(freshData.reviewCount || 0);
+      }
+    } catch (error) {
+      console.error("Error fetching product data:", error);
     }
   };
 
   useEffect(() => {
     fetchProductData();
+    // Set up an interval to refresh data every few seconds
+    const interval = setInterval(fetchProductData, 5000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId, products]);
+  }, [productId]);
 
   // Handler to add product to wishlist
   const handleAddToWishlist = async () => {

@@ -18,34 +18,18 @@ const transporter = nodemailer.createTransport({
 // Add a review
 export const addReview = async (req, res) => {
     try {
-        const { productId, rating, reviewText } = req.body;
+        const { productId, rating, reviewText, orderId } = req.body;
         const userId = req.user._id;
 
         // Find the product
-        const product = await productModel.findById(productId);
+        const product = await productModel.findById(productId)
+            .populate({
+                path: "reviews.user",
+                select: "_id name"
+            });
+            
         if (!product) {
             return res.status(404).json({ success: false, message: "Product not found" });
-        }
-
-        // Check if the user has already reviewed
-        const existingReviewIndex = product.reviews.findIndex(
-            (review) => review.user.toString() === userId.toString()
-        );
-        
-        if (existingReviewIndex !== -1) {
-            // Update existing review
-            product.reviews[existingReviewIndex].rating = Number(rating);
-            if (reviewText) {
-                product.reviews[existingReviewIndex].reviewText = reviewText;
-            }
-            product.reviews[existingReviewIndex].date = new Date();
-
-            // Recalculate average rating
-            const totalRatings = product.reviews.reduce((acc, review) => acc + review.rating, 0);
-            product.averageRating = totalRatings / product.reviews.length;
-
-            await product.save();
-            return res.json({ success: true, message: "Review updated successfully", product });
         }
 
         // Add new review
@@ -53,17 +37,49 @@ export const addReview = async (req, res) => {
             user: userId,
             rating: Number(rating),
             reviewText: reviewText || "",
+            date: new Date()
         };
-        product.reviews.push(newReview);
 
-        // Update average rating and review count
-        const totalRatings = product.reviews.reduce((acc, review) => acc + review.rating, 0);
-        product.averageRating = totalRatings / product.reviews.length;
-        product.reviewCount = product.reviews.length;
+        // Only add orderId if it exists
+        if (orderId) {
+            newReview.orderId = orderId;
+        }
+
+        // Check if a review for this specific order already exists
+        const existingReviewIndex = orderId ? 
+            product.reviews.findIndex(
+                (review) => review.orderId && review.orderId.toString() === orderId.toString()
+            ) : -1;
+        
+        if (existingReviewIndex !== -1) {
+            // Update existing review for this order
+            product.reviews[existingReviewIndex] = newReview;
+        } else {
+            // Add new review
+            product.reviews.push(newReview);
+        }
+
+        // Calculate average rating - count all reviews
+        const validReviews = product.reviews.filter(review => review.rating);
+        const totalRatings = validReviews.reduce((acc, review) => acc + review.rating, 0);
+        product.averageRating = validReviews.length > 0 ? totalRatings / validReviews.length : 0;
+        product.reviewCount = validReviews.length;
 
         await product.save();
 
-        res.json({ success: true, message: "Review added successfully", product });
+        // Return the populated reviews in the response
+        const updatedProduct = await productModel.findById(productId)
+            .populate({
+                path: "reviews.user",
+                select: "_id name"
+            });
+
+        res.json({ 
+            success: true, 
+            message: existingReviewIndex !== -1 ? "Review updated successfully" : "Review added successfully", 
+            product: updatedProduct,
+            reviews: updatedProduct.reviews
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: error.message });

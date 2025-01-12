@@ -41,6 +41,8 @@ const Orders = () => {
             item.orderId = order._id;
             item.returnStatus = order.returnStatus || "none";
             item.refundAmount = order.refundAmount || null;
+            // Add reviewedItems to track if this specific order item has been reviewed
+            item.isReviewed = order.reviewedItems ? order.reviewedItems.includes(item._id) : false;
 
             // Push into a flat array for easy rendering
             allOrdersItem.push(item);
@@ -50,7 +52,7 @@ const Orders = () => {
         // Sort by date, newest first
         setOrderData(allOrdersItem.sort((a, b) => b.date - a.date));
 
-        // Load user ratings for each product
+        // Load user ratings for each order item
         const ratings = {};
         for (const item of allOrdersItem) {
           try {
@@ -67,11 +69,21 @@ const Orders = () => {
               const decodedToken = JSON.parse(atob(token.split('.')[1]));
               const userId = decodedToken.id;
 
+              // Find the review for this specific order item by checking both user and orderId
               const userReview = ratingResponse.data.reviews.find(
-                (review) => review.user._id === userId
+                (review) => 
+                  review.user._id === userId && 
+                  review.orderId && 
+                  review.orderId.toString() === item.orderId.toString()
               );
+
               if (userReview) {
-                ratings[item._id] = userReview.rating;
+                // Store rating by orderId
+                ratings[item.orderId] = {
+                  rating: userReview.rating,
+                  productId: item._id,
+                  date: userReview.date
+                };
               }
             }
           } catch (error) {
@@ -99,7 +111,7 @@ const Orders = () => {
       // Submit the review to the product
       const reviewResponse = await axios.post(
         `${backendUrl}/api/product/review`,
-        { productId, rating },
+        { productId, rating, orderId },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -109,40 +121,38 @@ const Orders = () => {
       );
 
       if (reviewResponse.data.success) {
-        // Then mark the order item as reviewed if it hasn't been reviewed before
-        const orderResponse = await axios.post(
-          `${backendUrl}/api/order/reviewed/${orderId}`,
-          { productId, rating },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
         // Update the local state with the new rating
         setUserRatings(prev => ({
           ...prev,
-          [productId]: rating
+          [orderId]: {
+            rating: rating,
+            productId: productId,
+            date: new Date()
+          }
         }));
 
-        if (orderResponse.data.success) {
-          setRatingMessage("Rating submitted successfully!");
-        } else if (orderResponse.data.message === "This item has already been reviewed") {
-          setRatingMessage("Rating updated successfully!");
-        }
-        loadOrderData(); // Reload order data to reflect the changes
+        // Update the order data to reflect the review status
+        setOrderData(prevData => 
+          prevData.map(item => {
+            if (item.orderId === orderId && item._id === productId) {
+              return {
+                ...item,
+                isReviewed: true
+              };
+            }
+            return item;
+          })
+        );
+
+        setRatingMessage(reviewResponse.data.message);
       } else {
         setRatingMessage(reviewResponse.data.message || "Failed to submit rating.");
       }
     } catch (error) {
       console.error("Error submitting rating:", error);
-      if (error.response?.status !== 401) {
-        setRatingMessage(
-          error.response?.data?.message || "Error submitting rating. Please try again."
-        );
-      }
+      setRatingMessage(
+        error.response?.data?.message || "Error submitting rating. Please try again."
+      );
     }
   };
 
@@ -341,14 +351,14 @@ const Orders = () => {
                     </button>
 
                     {/* Return request section */}
-                    {item.returnStatus === "none" ? (
+                    {item.status === "Delivered" && item.returnStatus === "none" && !item.isReviewed ? (
                       <button
                         onClick={() => requestReturn(item.orderId)}
                         className="border px-4 py-2 text-sm font-medium rounded-sm"
                       >
                         Request Return
                       </button>
-                    ) : (
+                    ) : item.returnStatus !== "none" && (
                       <div className="text-sm">
                         <span className={
                           item.returnStatus === 'approved' ? 'text-green-600' :
@@ -368,7 +378,7 @@ const Orders = () => {
                   </div>
                 )}
 
-                {/* Rating Section - only show for delivered items */}
+                {/* Rating Section - only show for delivered items, regardless of return status */}
                 {item.status === "Delivered" && (
                   <div className="mt-2">
                     <p className="text-sm">Rate this product:</p>
@@ -378,7 +388,7 @@ const Orders = () => {
                           key={star}
                           onClick={() => submitRating(item.orderId, item._id, star)}
                           className={`text-2xl ${
-                            star <= (userRatings[item._id] || 0)
+                            star <= (userRatings[item.orderId]?.rating || 0)
                               ? "text-yellow-500"
                               : "text-gray-300"
                           } hover:text-yellow-500 transition-colors`}
@@ -386,9 +396,9 @@ const Orders = () => {
                           ★
                         </button>
                       ))}
-                      {userRatings[item._id] && (
+                      {userRatings[item.orderId] && (
                         <span className="text-sm text-gray-500 ml-2">
-                          (Your rating: {userRatings[item._id]})
+                          (Your rating: {userRatings[item.orderId].rating})
                         </span>
                       )}
                     </div>
