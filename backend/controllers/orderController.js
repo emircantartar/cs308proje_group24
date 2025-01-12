@@ -425,7 +425,7 @@ export const placeOrder = async (req, res) => {
       );
     }
 
-    // Create new order
+    // Create new order with consistent status naming
     const newOrder = new orderModel({
       userId,
       items,
@@ -433,6 +433,7 @@ export const placeOrder = async (req, res) => {
       address,
       paymentMethod,
       date: Date.now(),
+      status: "Order Placed", // Using consistent status naming
       payment: paymentMethod === 'cod' ? false : true
     });
 
@@ -478,6 +479,22 @@ export const userOrders = async (req, res) => {
 export const updateStatus = async (req, res) => {
   try {
     const { orderId, status } = req.body;
+    
+    // Find the order first
+    const order = await orderModel.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check if order is cancelled
+    if (order.status.toLowerCase() === 'cancelled') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cannot update status of a cancelled order' 
+      });
+    }
+
+    // Update the status if not cancelled
     await orderModel.findByIdAndUpdate(orderId, { status });
     res.json({ success: true, message: 'Status Updated' });
   } catch (error) {
@@ -657,4 +674,56 @@ export const calculateFinancials = async (req, res) => {
       message: error.message || 'Error calculating financials',
     });
   }
+};
+
+// Cancel order
+export const cancelOrder = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const userId = req.user._id;
+
+        // Find the order
+        const order = await orderModel.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        // Check if the order belongs to the user
+        if (order.userId.toString() !== userId.toString()) {
+            return res.status(403).json({ success: false, message: "Not authorized to cancel this order" });
+        }
+
+        // Check if order can be cancelled based on status (case-insensitive)
+        const currentStatus = order.status.toLowerCase().trim();
+        const allowedStatuses = ["placed", "order placed", "packing"];
+        const canCancel = allowedStatuses.some(status => currentStatus.includes(status));
+
+        if (!canCancel) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Order cannot be cancelled. Orders can only be cancelled before shipping." 
+            });
+        }
+
+        // Restore product quantities
+        for (const item of order.items) {
+            await productModel.findByIdAndUpdate(
+                item._id,
+                { $inc: { quantity: item.quantity } }
+            );
+        }
+
+        // Update order status to cancelled
+        order.status = "cancelled";
+        await order.save();
+
+        res.json({ 
+            success: true, 
+            message: "Order cancelled successfully",
+            order 
+        });
+    } catch (error) {
+        console.error("Error cancelling order:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
 };

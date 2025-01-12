@@ -199,13 +199,15 @@ const Orders = ({ token }) => {
             <select
               onChange={(event) => statusHandler(event, order._id)}
               value={order.status}
-              className="p-2 font-semibold"
+              className={`p-2 font-semibold ${order.status.toLowerCase() === 'cancelled' ? 'bg-gray-100 text-gray-500' : ''}`}
+              disabled={order.status.toLowerCase() === 'cancelled'}
             >
               <option value="Order Placed">Order Placed</option>
               <option value="Packing">Packing</option>
               <option value="Shipped">Shipped</option>
               <option value="Out for delivery">Out for delivery</option>
               <option value="Delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
             </select>
 
             {/* Return and Refund Status */}

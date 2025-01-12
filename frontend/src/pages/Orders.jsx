@@ -188,16 +188,24 @@ const Orders = () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            'Accept': 'application/pdf',
           },
+          responseType: 'blob',
         }
       );
 
-      if (response.data.success) {
-        toast.success("Invoice downloaded successfully!");
-        // Handle the downloaded invoice
-      } else {
-        toast.error(response.data.message || "Failed to download invoice.");
-      }
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', `invoice-${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      URL.revokeObjectURL(blobUrl);
+      toast.success("Invoice downloaded successfully!");
     } catch (error) {
       console.error("Error downloading invoice:", error);
       if (error.response?.status !== 401) {
@@ -205,6 +213,36 @@ const Orders = () => {
           error.response?.data?.message || "Error downloading invoice. Please try again."
         );
       }
+    }
+  };
+
+  // Add cancelOrder function
+  const cancelOrder = async (orderId) => {
+    try {
+      if (!token) return alert("Please log in to cancel the order.");
+
+      const response = await axios.post(
+        `${backendUrl}/api/order/cancel/${orderId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        toast.success("Order cancelled successfully!");
+        loadOrderData(); // Reload orders to reflect the changes
+      } else {
+        toast.error(response.data.message || "Failed to cancel order.");
+      }
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      toast.error(
+        error.response?.data?.message || "Error cancelling order. Please try again."
+      );
     }
   };
 
@@ -265,15 +303,29 @@ const Orders = () => {
               <div className="flex items-center gap-2">
                 <p
                   className={`min-w-2 h-2 rounded-full ${
-                    item.status === "Delivered" ? "bg-green-500" : "bg-gray-500"
+                    item.status === "Delivered" ? "bg-green-500" : 
+                    item.status === "cancelled" ? "bg-red-500" : "bg-gray-500"
                   }`}
                 ></p>
                 <p className="text-sm md:text-base">{item.status}</p>
               </div>
 
-              {/* If delivered, show invoice buttons + return logic */}
-              {item.status === "Delivered" && (
-                <div className="flex flex-col gap-3 items-start">
+              {/* Action buttons */}
+              <div className="flex flex-col gap-3 items-start">
+                {/* Cancel button for Placed or Packing status */}
+                {(item.status.toLowerCase() === "placed" || 
+                  item.status.toLowerCase() === "order placed" || 
+                  item.status.toLowerCase() === "packing") && (
+                  <button
+                    onClick={() => cancelOrder(item.orderId)}
+                    className="border px-4 py-2 text-sm font-medium rounded-sm bg-red-500 text-white hover:bg-red-600"
+                  >
+                    Cancel Order
+                  </button>
+                )}
+
+                {/* Delivered order actions */}
+                {item.status === "Delivered" && (
                   <div className="flex gap-3">
                     <button
                       onClick={() => downloadInvoice(item.orderId)}
@@ -288,7 +340,7 @@ const Orders = () => {
                       Email Invoice
                     </button>
 
-                    {/* Conditionally show "Request Return" or "Return Status" */}
+                    {/* Return request section */}
                     {item.returnStatus === "none" ? (
                       <button
                         onClick={() => requestReturn(item.orderId)}
@@ -314,8 +366,10 @@ const Orders = () => {
                       </div>
                     )}
                   </div>
+                )}
 
-                  {/* Rating Section */}
+                {/* Rating Section - only show for delivered items */}
+                {item.status === "Delivered" && (
                   <div className="mt-2">
                     <p className="text-sm">Rate this product:</p>
                     <div className="flex items-center gap-1">
@@ -339,8 +393,8 @@ const Orders = () => {
                       )}
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         ))}

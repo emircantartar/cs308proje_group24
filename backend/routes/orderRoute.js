@@ -11,7 +11,8 @@ import {
     requestReturn,
     updateReturnStatus,
     getReturnRequests,
-    markItemAsReviewed, // NEW
+    markItemAsReviewed,
+    cancelOrder,
 } from "../controllers/orderController.js";
 
 import adminAuth from "../middleware/adminAuth.js";
@@ -35,5 +36,8 @@ orderRouter.get("/returns", adminAuth, getReturnRequests);
 
 // NEW: Mark an item as reviewed
 orderRouter.post("/reviewed/:orderId", authUser, markItemAsReviewed);
+
+// Cancel order route
+orderRouter.post("/cancel/:orderId", authUser, cancelOrder);
 
 export default orderRouter;
