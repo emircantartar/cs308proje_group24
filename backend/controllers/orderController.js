@@ -5,6 +5,7 @@ import nodemailer from "nodemailer";
 import PDFDocument from 'pdfkit';
 import fs from "fs";
 import path from "path";
+import notificationModel from "../models/notificationModel.js";
 
 // Global variables
 const currency = "$";
@@ -270,35 +271,187 @@ export const requestReturn = async (req, res) => {
   }
 };
 
+// Create transporter for email
+const createTransporter = () => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error('Email configuration is missing. Please check EMAIL_USER and EMAIL_PASS in .env file.');
+  }
+
+  return nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+    debug: true, // Enable debug logs
+    logger: true // Enable logger
+  });
+};
+
 // 2) Update Return Status
 export const updateReturnStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status } = req.body;
+    const { status, refundAmount } = req.body;
 
     const order = await orderModel.findById(orderId);
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    if (!['approved', 'rejected', 'refunded'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status. Must be 'approved', 'rejected', or 'refunded'.",
-      });
+    // Update order status
+    order.returnStatus = status;
+    if (refundAmount) {
+      order.refundAmount = refundAmount;
     }
 
-    order.returnStatus = status;
-
-    // Update inventory when return is approved
-    if (status === 'approved') {
-      for (const item of order.items) {
-        const product = await productModel.findById(item._id);
-        if (product) {
-          product.quantity += item.quantity;
-          await product.save();
-        }
+    try {
+      // Get user email
+      const user = await userModel.findById(order.userId);
+      if (!user || !user.email) {
+        console.log(`No email found for user ${order.userId}`);
+        throw new Error('User email not found');
       }
+
+      let notificationMessage = '';
+      let emailSubject = '';
+      let emailTemplate = '';
+
+      // Set notification and email content based on status
+      switch (status) {
+        case 'approved':
+          // Update product quantities
+          for (const item of order.items) {
+            const product = await productModel.findById(item._id);
+            if (product) {
+              product.quantity += item.quantity;
+              await product.save();
+            }
+          }
+
+          notificationMessage = `Your return request for order #${order._id} has been approved. Refund amount: ${currency}${order.refundAmount || order.amount}`;
+          emailSubject = 'Return Request Approved ✅';
+          emailTemplate = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #e53e3e;">Return Request Approved! ✅</h2>
+              <p>Good news! Your return request has been approved.</p>
+              
+              <div style="border: 1px solid #ddd; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                <h3 style="margin: 0 0 10px 0;">Return Details</h3>
+                <p><strong>Order ID:</strong> #${order._id}</p>
+                <p><strong>Refund Amount:</strong> ${currency}${order.refundAmount || order.amount}</p>
+                <p><strong>Status:</strong> Approved</p>
+              </div>
+
+              <p>Your refund will be processed according to your original payment method. Please allow 5-10 business days for the refund to appear in your account.</p>
+              
+              <div style="margin-top: 20px;">
+                <p style="color: #666;">If you have any questions about your refund, please don't hesitate to contact our customer support team.</p>
+              </div>
+
+              <p style="color: #666; font-size: 0.9em; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 20px;">
+                Thank you for shopping with us!
+              </p>
+            </div>
+          `;
+          break;
+
+        case 'rejected':
+          notificationMessage = `Your return request for order #${order._id} has been rejected.`;
+          emailSubject = 'Return Request Update ❌';
+          emailTemplate = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #e53e3e;">Return Request Update</h2>
+              <p>We have reviewed your return request for order #${order._id}.</p>
+              
+              <div style="border: 1px solid #ddd; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                <h3 style="margin: 0 0 10px 0;">Return Details</h3>
+                <p><strong>Order ID:</strong> #${order._id}</p>
+                <p><strong>Status:</strong> Rejected</p>
+              </div>
+
+              <p>Unfortunately, we are unable to accept your return request at this time. This could be due to one or more of the following reasons:</p>
+              <ul style="color: #666;">
+                <li>The return window has expired</li>
+                <li>The item condition does not meet our return policy requirements</li>
+                <li>The item is not eligible for return as per our policy</li>
+              </ul>
+              
+              <div style="margin-top: 20px;">
+                <p style="color: #666;">If you would like to discuss this further or have any questions, please contact our customer support team.</p>
+              </div>
+
+              <p style="color: #666; font-size: 0.9em; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 20px;">
+                Thank you for your understanding.
+              </p>
+            </div>
+          `;
+          break;
+
+        case 'refunded':
+          notificationMessage = `Your refund for order #${order._id} has been processed. Amount: ${currency}${order.refundAmount || order.amount}`;
+          emailSubject = 'Refund Processed 💰';
+          emailTemplate = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #e53e3e;">Refund Processed Successfully! 💰</h2>
+              <p>Great news! Your refund has been processed and is on its way.</p>
+              
+              <div style="border: 1px solid #ddd; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                <h3 style="margin: 0 0 10px 0;">Refund Details</h3>
+                <p><strong>Order ID:</strong> #${order._id}</p>
+                <p><strong>Refund Amount:</strong> ${currency}${order.refundAmount || order.amount}</p>
+                <p><strong>Status:</strong> Processed</p>
+              </div>
+
+              <p>The refund has been initiated to your original payment method. Please note that it may take 5-10 business days for the amount to appear in your account, depending on your bank's processing time.</p>
+              
+              <div style="margin-top: 20px;">
+                <p style="color: #666;">If you don't see the refund in your account after 10 business days, please contact our customer support team.</p>
+              </div>
+
+              <p style="color: #666; font-size: 0.9em; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 20px;">
+                Thank you for your patience throughout this process!
+              </p>
+            </div>
+          `;
+          break;
+      }
+
+      if (notificationMessage) {
+        // Create notification
+        const notification = new notificationModel({
+          user: order.userId,
+          order: order._id,
+          type: 'refund',
+          message: notificationMessage,
+        });
+        await notification.save();
+        console.log('Return status notification created successfully');
+
+        // Create and verify email transporter
+        const transporter = createTransporter();
+        try {
+          await transporter.verify();
+          console.log('Email transporter verified successfully');
+        } catch (error) {
+          console.error('Email transporter verification failed:', error);
+          throw new Error('Email configuration is invalid');
+        }
+
+        // Send email notification
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: user.email,
+          subject: emailSubject,
+          html: emailTemplate
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`Return status email sent to ${user.email}`);
+      }
+    } catch (error) {
+      console.error('Error handling notifications:', error);
+      // Don't fail the whole request if notifications fail
     }
 
     await order.save();

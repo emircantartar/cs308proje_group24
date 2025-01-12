@@ -3,6 +3,7 @@ import productModel from "../models/productModel.js";
 import userModel from "../models/userModel.js";
 import notificationModel from "../models/notificationModel.js";
 import nodemailer from 'nodemailer';
+import axios from 'axios';
 
 // Email configuration
 const transporter = nodemailer.createTransport({
@@ -291,54 +292,16 @@ const applyDiscount = async (req, res) => {
       });
     }
 
-    // Find users with these products in their wishlist
-    const users = await userModel.find({ 'wishlist': { $in: productIds } }).populate('email');
-
-    // Create notifications and send emails
-    const notifications = [];
-    for (const user of users) {
-      const userProducts = updatedProducts.filter((updatedProduct) =>
-        user.wishlist.includes(updatedProduct.id)
+    // Send notifications through the notification endpoint
+    try {
+      await axios.post(
+        `${process.env.BACKEND_URL || 'http://localhost:4000'}/api/notifications/send`,
+        { productIds, discountRate },
+        { headers: { Authorization: `Bearer ${req.headers.token}` } }
       );
-
-      if (userProducts.length > 0) {
-        for (const discountedProduct of userProducts) {
-          // Create notification
-          notifications.push({
-            user: user._id,
-            product: discountedProduct.id,
-            message: `The product "${discountedProduct.name}" in your wishlist is now ${discountRate}% off! New price: $${discountedProduct.newPrice.toFixed(2)}`,
-            isRead: false,
-          });
-
-          // Send email notification
-          const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: user.email,
-            subject: 'Price Drop Alert! 🎉',
-            html: `
-              <h2>Great news! A product in your wishlist is now on sale!</h2>
-              <p><strong>${discountedProduct.name}</strong> is now ${discountRate}% off!</p>
-              <p>Original price: $${discountedProduct.originalPrice.toFixed(2)}</p>
-              <p>New price: $${discountedProduct.newPrice.toFixed(2)}</p>
-              <p>Don't miss out on this great deal!</p>
-              <a href="${process.env.FRONTEND_URL}/product/${discountedProduct.id}" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">View Product</a>
-            `
-          };
-
-          try {
-            await transporter.sendMail(mailOptions);
-            console.log(`Email sent to ${user.email} for product ${discountedProduct.name}`);
-          } catch (error) {
-            console.error(`Error sending email to ${user.email}:`, error);
-          }
-        }
-      }
-    }
-
-    // Bulk insert notifications if any exist
-    if (notifications.length > 0) {
-      await notificationModel.insertMany(notifications);
+    } catch (error) {
+      console.error('Error sending notifications:', error);
+      // Don't fail the whole request if notifications fail
     }
 
     res.json({
